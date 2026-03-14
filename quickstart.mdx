@@ -1,80 +1,385 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart Guide
+description: Generate your first song with ACE-Step 1.5 in under 5 minutes
 ---
 
-## Get started in three steps
-
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+## Quick Installation
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+**Requirements:** Python 3.11-3.12, CUDA GPU recommended (also supports MPS / ROCm / Intel XPU / CPU)
 </Note>
+
+<Steps>
+  <Step title="Install uv package manager">
+    Choose your platform:
+    
+    <CodeGroup>
+    ```bash macOS / Linux
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+    
+    ```powershell Windows
+    powershell -ExecutionPolicy ByPass -c "irm https://astral.sh/uv/install.ps1 | iex"
+    ```
+    </CodeGroup>
+  </Step>
+  
+  <Step title="Clone and install ACE-Step">
+    ```bash
+    git clone https://github.com/ACE-Step/ACE-Step-1.5.git
+    cd ACE-Step-1.5
+    uv sync
+    ```
+    
+    <Tip>
+    The `uv sync` command automatically installs all dependencies. This may take a few minutes on first run.
+    </Tip>
+  </Step>
+  
+  <Step title="Launch the interface">
+    <CodeGroup>
+    ```bash Gradio Web UI (Recommended)
+    uv run acestep
+    ```
+    
+    ```bash REST API Server
+    uv run acestep-api
+    ```
+    </CodeGroup>
+    
+    Open your browser:
+    - Gradio UI: http://localhost:7860
+    - API Server: http://localhost:8001
+    
+    <Note>
+    Models will be **automatically downloaded** on first run. The main model package is approximately 10GB.
+    </Note>
+  </Step>
+</Steps>
+
+## Your First Song
+
+Let's generate your first song using the Gradio Web UI:
+
+<Steps>
+  <Step title="Initialize the service">
+    1. Open http://localhost:7860 in your browser
+    2. Click the **Settings** accordion at the top to expand it
+    3. Click **Initialize Service** button
+    4. Wait for models to load (first run will download models automatically)
+    
+    <Tip>
+    The status box will show your GPU tier, VRAM, and maximum duration/batch size settings.
+    </Tip>
+  </Step>
+  
+  <Step title="Choose Simple Mode">
+    Simple Mode lets you generate complete songs from a natural language description.
+    
+    1. In the **Generation** tab, select **Simple** from the Generation Mode radio buttons
+    2. Enter a description in the "Song Description" field, for example:
+       - "a soft Bengali love song for a quiet evening"
+       - "upbeat electronic dance music with heavy bass drops"
+       - "melancholic indie folk with acoustic guitar"
+    3. Optionally check **Instrumental** if you want music without vocals
+  </Step>
+  
+  <Step title="Create the sample">
+    Click the **Create Sample** button. The LM will:
+    - Generate a detailed caption
+    - Create lyrics (unless instrumental)
+    - Set optimal metadata (BPM, duration, etc.)
+    
+    Review the generated content in the expanded sections below.
+  </Step>
+  
+  <Step title="Generate music">
+    Click **Generate Music** and wait. Generation typically takes:
+    - **A100**: Under 2 seconds
+    - **RTX 3090**: Under 10 seconds
+    - **Lower-end GPUs**: 30-60 seconds
+    
+    <Note>
+    The first generation may be slower due to model compilation and optimization.
+    </Note>
+  </Step>
+  
+  <Step title="Listen and refine">
+    Your generated audio will appear in the **Results** section:
+    - Click the play button to listen
+    - Use the batch navigator if you generated multiple outputs
+    - Click **Score Audio** to get automatic quality assessment
+    - Download your favorite results
+    
+    If you want to try again with different settings, adjust the parameters and click **Generate Music** again.
+  </Step>
+</Steps>
+
+## Alternative: Using Launch Scripts
+
+For easier startup, ACE-Step provides ready-to-use launch scripts for all platforms:
+
+<CodeGroup>
+```bash Windows (NVIDIA CUDA)
+start_gradio_ui.bat
+```
+
+```bash Windows (AMD ROCm)
+start_gradio_ui_rocm.bat
+```
+
+```bash Linux
+chmod +x start_gradio_ui.sh
+./start_gradio_ui.sh
+```
+
+```bash macOS (Apple Silicon)
+chmod +x start_gradio_ui_macos.sh
+./start_gradio_ui_macos.sh
+```
+</CodeGroup>
+
+<Tip>
+Launch scripts automatically handle environment detection, dependency installation, and application startup. They also check for updates on startup by default.
+</Tip>
+
+## Custom Mode Example
+
+For more control, you can use **Custom Mode** to specify exact parameters:
+
+<Steps>
+  <Step title="Switch to Custom Mode">
+    Select **Custom** from the Generation Mode radio buttons.
+  </Step>
+  
+  <Step title="Fill in the details">
+    **Caption (required):**
+    ```
+    Energetic rock anthem with powerful electric guitar riffs, 
+    driving drums, and soaring vocals
+    ```
+    
+    **Lyrics (optional):**
+    ```
+    [Verse 1]
+    Standing on the edge of something new
+    The world is calling and I'm breaking through
+    
+    [Chorus]
+    We rise, we fall, we're standing tall
+    Together we can conquer it all
+    ```
+    
+    **Metadata (optional):**
+    - Duration: 30 seconds (for quick testing)
+    - BPM: 140
+    - Key/Scale: E Minor
+    - Vocal Language: en
+  </Step>
+  
+  <Step title="Generate">
+    Click **Generate Music** and wait for your custom song.
+  </Step>
+</Steps>
+
+## Using the CLI
+
+Prefer the command line? Use the interactive wizard:
+
+```bash
+cd ACE-Step-1.5
+uv run python cli.py
+```
+
+The wizard will guide you through:
+- Task type selection (text2music, cover, repaint, etc.)
+- Model selection (DiT and LM models)
+- Input parameters (caption, lyrics, metadata)
+- Advanced settings (inference steps, guidance, etc.)
+- Saving configuration for reuse
+
+<Tip>
+Save your configuration to a `.toml` file and reuse it:
+```bash
+uv run python cli.py -c my_config.toml
+```
+</Tip>
+
+## Quick Examples by Task Type
+
+### Text-to-Music
+
+Generate music from text description:
+
+```bash
+uv run acestep
+# In the UI: Simple Mode > "jazz trio playing in a smoky bar" > Create Sample > Generate Music
+```
+
+### Cover Generation
+
+Transform existing audio into a new style:
+
+<Steps>
+  <Step title="Select Remix Mode">
+    Choose **Remix** from Generation Mode.
+  </Step>
+  
+  <Step title="Upload source audio">
+    Click "Source Audio" and upload your audio file.
+  </Step>
+  
+  <Step title="Describe target style">
+    Caption: "Electronic EDM version with heavy synths and bass drops"
+  </Step>
+  
+  <Step title="Generate">
+    Click **Generate Music** to create the cover.
+  </Step>
+</Steps>
+
+### Repaint (Edit)
+
+Regenerate a specific time segment:
+
+<Steps>
+  <Step title="Select Repaint Mode">
+    Choose **Repaint** from Generation Mode.
+  </Step>
+  
+  <Step title="Upload and set range">
+    - Upload source audio
+    - Set Repaint Start: 10.0 seconds
+    - Set Repaint End: 20.0 seconds
+  </Step>
+  
+  <Step title="Describe changes">
+    Caption: "Replace the guitar solo with a saxophone solo"
+  </Step>
+  
+  <Step title="Generate">
+    Click **Generate Music** to regenerate the segment.
+  </Step>
+</Steps>
+
+## Windows Portable Package
+
+<Note>
+Windows users can skip installation and use our portable package with pre-installed dependencies.
+</Note>
+
+<Steps>
+  <Step title="Download and extract">
+    Download [ACE-Step-1.5.7z](https://files.acemusic.ai/acemusic/win/ACE-Step-1.5.7z) and extract.
+  </Step>
+  
+  <Step title="Launch">
+    Double-click `start_gradio_ui.bat` to launch the interface.
+  </Step>
+</Steps>
+
+**Requirements:** CUDA 12.8
+
+## Configuration with .env
+
+<Tip>
+Use a `.env` file to customize settings that survive repository updates.
+</Tip>
+
+```bash
+# Copy the example file
+cp .env.example .env
+
+# Edit with your preferred settings
+```
+
+**Example .env configuration:**
+
+```bash
+# Use the turbo model for fastest generation
+ACESTEP_CONFIG_PATH=acestep-v15-turbo
+
+# Use the 1.7B LM for better quality (requires 8GB+ VRAM)
+ACESTEP_LM_MODEL_PATH=acestep-5Hz-lm-1.7B
+
+# Set UI language to Chinese
+LANGUAGE=zh
+
+# Use custom port
+PORT=8080
+
+# Enable LLM features
+ACESTEP_INIT_LLM=true
+
+# Use ModelScope for faster downloads in China
+ACESTEP_DOWNLOAD_SOURCE=modelscope
+```
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Models not downloading">
+    **Issue:** Model download fails or is very slow.
+    
+    **Solution:**
+    - Try using ModelScope as download source: `--download-source modelscope`
+    - Or set in .env: `ACESTEP_DOWNLOAD_SOURCE=modelscope`
+    - Check your internet connection and firewall settings
+  </Accordion>
+  
+  <Accordion title="Out of memory errors">
+    **Issue:** CUDA out of memory or OOM errors.
+    
+    **Solution:**
+    - Reduce batch size to 1
+    - Reduce audio duration (try 30s instead of 60s+)
+    - Enable CPU offload in Settings
+    - Use a smaller LM model (0.6B instead of 1.7B/4B)
+    - Disable LLM features: `ACESTEP_INIT_LLM=false`
+  </Accordion>
+  
+  <Accordion title="Slow generation speed">
+    **Issue:** Generation takes too long.
+    
+    **Solution:**
+    - Use `acestep-v15-turbo` model (8 steps vs 50 steps)
+    - Use `vllm` backend instead of `pt` for LM (requires 8GB+ VRAM)
+    - Reduce inference steps in Advanced Settings
+    - Enable model compilation (torch.compile)
+    - First generation is always slower due to compilation
+  </Accordion>
+  
+  <Accordion title="AMD GPU not detected">
+    **Issue:** "No GPU detected" with AMD GPU.
+    
+    **Solution:**
+    - Run diagnostic: `python scripts/check_gpu.py`
+    - Set HSA_OVERRIDE_GFX_VERSION for RDNA3 GPUs:
+      - RX 7900 XT/XTX: `export HSA_OVERRIDE_GFX_VERSION=11.0.0`
+      - RX 7800 XT: `export HSA_OVERRIDE_GFX_VERSION=11.0.1`
+      - RX 7600: `export HSA_OVERRIDE_GFX_VERSION=11.0.2`
+    - Windows: Use `start_gradio_ui_rocm.bat` which sets environment variables automatically
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+Now that you've generated your first song, explore more advanced features:
+
+<CardGroup cols={2}>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Detailed installation for all platforms, AMD/ROCm, Intel XPU, and more
+  </Card>
+  
+  <Card title="Gradio UI Guide" icon="window" href="/usage/gradio-ui">
+    Complete reference for all UI features and settings
+  </Card>
+  
+  <Card title="Tutorial" icon="book" href="/model/tutorial">
+    Deep dive into mental models, design philosophy, and optimization strategies
+  </Card>
+  
+  <Card title="LoRA Training" icon="graduation-cap" href="/training/lora-training">
+    Train custom style adapters from your own music
+  </Card>
+</CardGroup>

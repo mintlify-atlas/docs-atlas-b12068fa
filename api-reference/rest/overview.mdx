@@ -1,0 +1,171 @@
+---
+title: REST API Overview
+description: Introduction to the ACE-Step 1.5 HTTP-based music generation API
+---
+
+The ACE-Step 1.5 REST API provides an HTTP-based asynchronous music generation service. This API allows you to create music from text prompts, lyrics, and musical parameters using advanced AI models.
+
+## Base URL
+
+The default server runs at:
+
+```
+http://localhost:8001
+```
+
+You can configure the host and port using environment variables:
+
+```bash
+export ACESTEP_API_HOST=127.0.0.1
+export ACESTEP_API_PORT=8001
+```
+
+## Basic Workflow
+
+The API follows an asynchronous task-based workflow:
+
+<Steps>
+  <Step title="Submit Task">
+    Call `POST /release_task` to submit a music generation task and receive a `task_id`
+  </Step>
+  <Step title="Query Status">
+    Call `POST /query_result` to batch query task status until `status` is `1` (succeeded) or `2` (failed)
+  </Step>
+  <Step title="Download Audio">
+    Download generated audio files via `GET /v1/audio?path=...` URLs returned in the result
+  </Step>
+</Steps>
+
+## Content Types
+
+The API supports multiple content types for flexibility:
+
+- **application/json** - For text-only parameters and server-side audio file references
+- **multipart/form-data** - For uploading local audio files as reference or source material
+- **application/x-www-form-urlencoded** - For simple form submissions
+
+## Response Format
+
+All API responses use a unified wrapper format:
+
+```json
+{
+  "data": { ... },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+<ResponseField name="data" type="any">
+  Actual response data (structure varies by endpoint)
+</ResponseField>
+
+<ResponseField name="code" type="integer">
+  HTTP status code (200 = success)
+</ResponseField>
+
+<ResponseField name="error" type="string | null">
+  Error message when request fails, null on success
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer">
+  Response timestamp in milliseconds (Unix epoch)
+</ResponseField>
+
+<ResponseField name="extra" type="any">
+  Additional metadata (usually null)
+</ResponseField>
+
+## Error Responses
+
+When an error occurs, the API returns a standard error response:
+
+```json
+{
+  "detail": "Error message describing the issue"
+}
+```
+
+### HTTP Status Codes
+
+| Status Code | Description |
+| --- | --- |
+| `200` | Success |
+| `400` | Invalid request (bad JSON, missing required fields) |
+| `401` | Unauthorized (missing or invalid API key) |
+| `404` | Resource not found |
+| `415` | Unsupported Content-Type |
+| `429` | Server busy (queue is full) |
+| `500` | Internal server error |
+
+## Key Features
+
+### Multi-Model Support
+
+The API supports loading multiple DiT models simultaneously. Configure additional models via environment variables:
+
+```bash
+export ACESTEP_CONFIG_PATH=acestep-v15-turbo
+export ACESTEP_CONFIG_PATH2=acestep-v15-base
+export ACESTEP_CONFIG_PATH3=acestep-v15-turbo-shift3
+```
+
+Select a specific model in your request using the `model` parameter.
+
+### LM-Enhanced Generation
+
+Enable "thinking mode" (`thinking=true`) to use the 5Hz Language Model for:
+
+- Generating audio semantic codes
+- Auto-completing missing metadata (BPM, key, time signature)
+- Enhancing captions and lyrics with Chain-of-Thought reasoning
+
+### Task Types
+
+Supported generation modes:
+
+- **text2music** - Generate music from text prompts and lyrics
+- **cover** - Create a cover version of existing audio
+- **repaint** - Edit specific sections of audio
+- **lego** - Multi-track stem generation
+- **extract** - Extract musical features
+- **complete** - Audio completion/extension
+
+## API Endpoints
+
+| Endpoint | Method | Description |
+| --- | --- | --- |
+| [/release_task](/api-reference/rest/endpoints#post-release_task) | POST | Create music generation task |
+| [/query_result](/api-reference/rest/endpoints#post-query_result) | POST | Query task results |
+| [/format_input](/api-reference/rest/endpoints#post-format_input) | POST | Format and enhance input via LLM |
+| [/create_random_sample](/api-reference/rest/endpoints#post-create_random_sample) | POST | Get random sample parameters |
+| [/v1/models](/api-reference/rest/endpoints#get-v1models) | GET | List available models |
+| [/v1/stats](/api-reference/rest/endpoints#get-v1stats) | GET | Get server statistics |
+| [/v1/audio](/api-reference/rest/endpoints#get-v1audio) | GET | Download audio file |
+| [/health](/api-reference/rest/endpoints#get-health) | GET | Health check |
+
+## Rate Limiting and Queue Management
+
+The API uses an internal queue to manage concurrent requests:
+
+- **Queue Size**: Configurable via `ACESTEP_QUEUE_MAXSIZE` (default: 200)
+- **Queue Full**: Returns HTTP 429 when queue capacity is reached
+- **Queue Position**: Returned in `/release_task` response
+
+Check `/v1/stats` to monitor queue status and average job duration.
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Authentication" icon="key" href="/api-reference/rest/authentication">
+    Learn how to secure your API with API keys
+  </Card>
+  <Card title="Endpoints" icon="code" href="/api-reference/rest/endpoints">
+    Explore all available endpoints with examples
+  </Card>
+  <Card title="Task Management" icon="tasks" href="/api-reference/rest/task-management">
+    Understand task status codes and polling strategies
+  </Card>
+</CardGroup>

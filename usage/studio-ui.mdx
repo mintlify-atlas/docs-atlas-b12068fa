@@ -1,0 +1,388 @@
+---
+title: 'Studio UI (Experimental)'
+description: 'HTML-based DAW-like interface for ACE-Step music generation'
+icon: 'paintbrush'
+---
+
+<Note>
+The Studio UI is an **optional, experimental** feature. The default way to use ACE-Step remains the Gradio Web UI.
+</Note>
+
+The Studio UI provides an alternative HTML-based interface with a more structured, DAW-like layout for users who prefer a different visual approach to music generation.
+
+## Overview
+
+<Card title="Key Features" icon="star">
+  - **Frontend-only**: Pure HTML/CSS/JavaScript interface
+  - **REST API integration**: Communicates with existing ACE-Step API
+  - **No backend changes**: Uses standard `/release_task` and `/query_result` endpoints
+  - **Experimental**: Layout and features may evolve based on feedback
+</Card>
+
+## Quick Start
+
+<Steps>
+  <Step title="Start API Server">
+    Launch the ACE-Step REST API server:
+    
+    ```bash
+    uv run acestep --enable-api --port 8001
+    ```
+    
+    Or use your usual API launch command.
+  </Step>
+  
+  <Step title="Open Studio UI">
+    Open `ui/studio.html` in a web browser:
+    
+    - **Double-click** the file
+    - Or navigate to `file:///path/to/ACE-Step-1.5/ui/studio.html`
+  </Step>
+  
+  <Step title="Configure API URL">
+    Set the API base URL if needed (default: `http://localhost:8001`)
+  </Step>
+  
+  <Step title="Generate Music">
+    Enter prompt and options, then click **Generate**. The UI will poll for results and display audio when ready.
+  </Step>
+</Steps>
+
+## Prerequisites
+
+<Warning>
+The Studio UI requires a running ACE-Step API server. It **cannot** function standalone.
+</Warning>
+
+**Required:**
+- ACE-Step API server running (see [REST API](/usage/rest-api))
+- Modern web browser with JavaScript enabled
+- Network access to the API server
+
+**Optional:**
+- CORS configuration if UI and API are on different domains
+
+## Usage
+
+### API Configuration
+
+Before using the Studio UI, configure the API connection:
+
+<Steps>
+  <Step title="Set Base URL">
+    Default: `http://localhost:8001`
+    
+    Update if your API server runs on a different host or port.
+  </Step>
+  
+  <Step title="Authentication (Optional)">
+    If your API requires authentication, configure the API key:
+    
+    - Enter key in the settings panel
+    - Or include in request headers
+  </Step>
+  
+  <Step title="Test Connection">
+    Click "Test Connection" or check `/health` endpoint to verify connectivity.
+  </Step>
+</Steps>
+
+### Basic Workflow
+
+<Tabs>
+  <Tab title="Simple Generation">
+    1. Enter music description in the prompt field
+    2. Optionally adjust BPM, key, duration
+    3. Click **Generate**
+    4. Monitor progress in the status panel
+    5. Play or download generated audio when ready
+  </Tab>
+  
+  <Tab title="With Thinking Mode">
+    1. Enable "Thinking" mode toggle
+    2. Enter prompt
+    3. LM will auto-generate metadata and codes
+    4. Click **Generate**
+    5. Review enhanced generation results
+  </Tab>
+  
+  <Tab title="Audio Upload">
+    1. Select task type (Cover, Repaint, etc.)
+    2. Upload source audio file
+    3. Enter transformation description
+    4. Adjust task-specific parameters
+    5. Click **Generate**
+  </Tab>
+</Tabs>
+
+### Interface Layout
+
+The Studio UI features a DAW-inspired layout:
+
+**Top Panel:**
+- API configuration
+- Model selection
+- Global settings
+
+**Left Sidebar:**
+- Input controls (prompt, lyrics, metadata)
+- Advanced parameters
+- Task type selector
+
+**Center Area:**
+- Waveform visualization
+- Playback controls
+- Generation progress
+
+**Right Sidebar:**
+- Generated audio list
+- Download options
+- Metadata display
+
+**Bottom Panel:**
+- Console/logs
+- Error messages
+- Status updates
+
+## API Integration
+
+The Studio UI uses standard ACE-Step REST API endpoints:
+
+### Task Submission
+
+```javascript
+// Submit generation task
+const response = await fetch(`${apiBase}/release_task`, {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    prompt: 'upbeat pop song',
+    thinking: true,
+    batch_size: 2
+  })
+});
+
+const {data} = await response.json();
+const taskId = data.task_id;
+```
+
+### Status Polling
+
+```javascript
+// Poll for results
+const pollInterval = setInterval(async () => {
+  const res = await fetch(`${apiBase}/query_result`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({task_id_list: [taskId]})
+  });
+  
+  const {data} = await res.json();
+  const status = data[0].status;
+  
+  if (status === 1) {
+    // Success - display audio
+    clearInterval(pollInterval);
+  } else if (status === 2) {
+    // Failed - show error
+    clearInterval(pollInterval);
+  }
+}, 5000);
+```
+
+### Audio Download
+
+```javascript
+// Download generated audio
+const audioUrl = `${apiBase}/v1/audio?path=${encodeURIComponent(audioPath)}`;
+window.open(audioUrl, '_blank');
+```
+
+## Advanced Features
+
+<Note>
+Experimental features may change in future releases.
+</Note>
+
+### Batch Generation
+
+Generate multiple variations:
+
+1. Set batch size (1-8)
+2. Configure seed settings
+3. Click **Generate**
+4. View all variations in results panel
+
+### Model Selection
+
+Switch between available DiT models:
+
+1. Click **Models** dropdown
+2. Select from available models
+3. Model name appears in generation metadata
+
+### File Upload
+
+Upload source or reference audio:
+
+1. Click **Upload** button
+2. Select audio file (wav, mp3, flac)
+3. File is sent to server for processing
+4. Use in Cover, Repaint, or other audio tasks
+
+### Custom Parameters
+
+Access advanced DiT/LM settings:
+
+1. Expand **Advanced Settings** panel
+2. Configure inference steps, shift, timesteps
+3. Adjust LM temperature, CFG scale
+4. Parameters are sent with task submission
+
+## Troubleshooting
+
+<Tabs>
+  <Tab title="Connection Issues">
+    **Problem:** Cannot connect to API server
+    
+    **Solutions:**
+    - Verify API server is running
+    - Check API base URL is correct
+    - Ensure firewall allows connections
+    - Test `/health` endpoint directly
+    - Review browser console for errors
+  </Tab>
+  
+  <Tab title="CORS Errors">
+    **Problem:** CORS policy blocks requests
+    
+    **Solutions:**
+    - Run UI and API on same origin
+    - Configure API server CORS headers
+    - Use browser extension to disable CORS (dev only)
+    - Serve UI through API server
+  </Tab>
+  
+  <Tab title="Task Failures">
+    **Problem:** Generation tasks fail
+    
+    **Solutions:**
+    - Check API server logs for errors
+    - Verify all required parameters are set
+    - Ensure model is initialized
+    - Review task status response for error details
+  </Tab>
+  
+  <Tab title="Audio Playback">
+    **Problem:** Cannot play generated audio
+    
+    **Solutions:**
+    - Check audio format is supported by browser
+    - Verify audio file URL is accessible
+    - Test direct download of audio file
+    - Review browser console for errors
+  </Tab>
+</Tabs>
+
+## Limitations
+
+<Warning>
+Current limitations of the experimental Studio UI:
+</Warning>
+
+- **Frontend-only**: No backend processing or model inference
+- **API dependency**: Requires running ACE-Step API server
+- **Limited features**: Not all Gradio UI features are implemented
+- **Experimental status**: Interface may change significantly
+- **No training**: LoRA training not available in Studio UI
+- **Browser compatibility**: Best experience in Chrome/Firefox
+
+## Scope & Future
+
+<Card title="Current Scope" icon="circle-info">
+  The Studio UI is a **proof-of-concept** demonstrating alternative interface design. It does not replace the Gradio UI, which remains the primary interface.
+</Card>
+
+**Future Possibilities:**
+- Enhanced waveform visualization
+- Multi-track editing
+- Preset management
+- Project save/load
+- Real-time parameter adjustment
+- Collaborative features
+
+<Note>
+Feature development depends on community feedback and usage patterns.
+</Note>
+
+## Comparison with Gradio UI
+
+| Feature | Gradio UI | Studio UI |
+|---------|-----------|----------|
+| **Status** | Primary, Stable | Experimental |
+| **Setup** | Python app.py | Open HTML file |
+| **Backend** | Integrated | Requires API server |
+| **Generation** | ✓ Full support | ✓ Via API |
+| **Training** | ✓ LoRA/LoKr | ✗ Not available |
+| **Interface** | Gradio components | Custom HTML/CSS/JS |
+| **Customization** | Python code | HTML/CSS/JS |
+| **Authentication** | Built-in | Via API |
+| **Progress** | Real-time | Polling |
+
+## Development
+
+For developers interested in extending the Studio UI:
+
+<Steps>
+  <Step title="Locate Files">
+    Studio UI source: `ui/studio.html`
+  </Step>
+  
+  <Step title="Review API Integration">
+    Study REST API endpoints used: `/release_task`, `/query_result`, `/v1/audio`
+  </Step>
+  
+  <Step title="Modify Interface">
+    Edit HTML/CSS/JavaScript directly in `studio.html`
+  </Step>
+  
+  <Step title="Test Changes">
+    Refresh browser to see updates (no build process required)
+  </Step>
+</Steps>
+
+**Technologies Used:**
+- Vanilla JavaScript (no frameworks)
+- HTML5 Audio API
+- Fetch API for HTTP requests
+- CSS Grid/Flexbox for layout
+
+## Feedback
+
+The Studio UI is experimental and feedback is welcome:
+
+<CardGroup cols={2}>
+  <Card title="Report Issues" icon="bug" href="https://github.com/yourusername/ACE-Step-1.5/issues">
+    File bug reports or feature requests
+  </Card>
+  <Card title="Discussions" icon="comments" href="https://github.com/yourusername/ACE-Step-1.5/discussions">
+    Share ideas and suggestions
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="REST API" icon="server" href="/usage/rest-api">
+    Learn about the underlying API
+  </Card>
+  <Card title="Gradio UI" icon="grid-2" href="/usage/gradio-ui">
+    Explore the primary interface
+  </Card>
+  <Card title="Python API" icon="python" href="/usage/python-api">
+    Programmatic access
+  </Card>
+  <Card title="CLI" icon="terminal" href="/usage/cli">
+    Command-line interface
+  </Card>
+</CardGroup>

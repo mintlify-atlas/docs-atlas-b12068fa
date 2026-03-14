@@ -1,0 +1,366 @@
+---
+title: 'Model Zoo'
+description: 'Complete catalog of ACE-Step 1.5 model variants'
+icon: 'building-columns'
+---
+
+# Model Zoo
+
+ACE-Step 1.5 provides a comprehensive model zoo with DiT models optimized for different use cases and LM models of varying sizes.
+
+For a complete overview, see the [Model Zoo diagram](https://github.com/ace-step/ACE-Step-1.5/blob/main/assets/model_zoo.png) in the source repository.
+
+## DiT Models (Diffusion Transformer)
+
+### Overview Table
+
+| DiT Model | Pre-Training | SFT | RL | CFG | Steps | Quality | Diversity | Fine-Tunability |
+|-----------|:------------:|:---:|:--:|:---:|:-----:|:-------:|:---------:|:---------------:|
+| `acestep-v15-base` | ✅ | ❌ | ❌ | ✅ | 50 | Medium | High | Easy |
+| `acestep-v15-sft` | ✅ | ✅ | ❌ | ✅ | 50 | High | Medium | Easy |
+| `acestep-v15-turbo` | ✅ | ✅ | ❌ | ❌ | 8 | Very High | Medium | Medium |
+| `acestep-v15-turbo-rl` | ✅ | ✅ | ✅ | ❌ | 8 | Very High | Medium | Medium |
+
+### Capability Matrix
+
+| Model | Text2Music | Cover | Repaint | Extract | Lego | Complete | Hugging Face |
+|-------|:----------:|:-----:|:-------:|:-------:|:----:|:--------:|:------------:|
+| `acestep-v15-base` | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | [Link](https://huggingface.co/ACE-Step/acestep-v15-base) |
+| `acestep-v15-sft` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | [Link](https://huggingface.co/ACE-Step/acestep-v15-sft) |
+| `acestep-v15-turbo` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | [Link](https://huggingface.co/ACE-Step/Ace-Step1.5) |
+| `acestep-v15-turbo-rl` | ✅ | ✅ | ✅ | ❌ | ❌ | ❌ | To be released |
+
+## Turbo Series
+
+<Note>
+  **Recommended for daily use** — The Turbo series delivers commercial-grade quality in just 8 diffusion steps, making generation 6x faster than 50-step models.
+</Note>
+
+### acestep-v15-turbo (Default)
+
+<Card title="Default Recommended Model" icon="star">
+  The best balance of quality, speed, and creativity for most use cases.
+</Card>
+
+**Key Features:**
+- **8 inference steps** — Under 2s per song on A100, under 10s on RTX 3090
+- **Joint distillation** — Trained on shift values 1, 2, 3 for optimal balance
+- **No CFG required** — Distilled to follow prompts without guidance overhead
+- **Thoroughly tested** — Most stable and reliable variant
+
+**Best For:**
+- Daily music generation
+- Rapid prototyping
+- Batch generation
+- Low-latency applications
+
+```bash
+# Download turbo model
+uv run acestep-download --model acestep-v15-turbo
+```
+
+### Turbo Variants
+
+The turbo series includes specialized variants distilled with different shift configurations:
+
+<Tabs>
+  <Tab title="turbo-shift1">
+    **Distilled with shift=1**
+    
+    - More details and texture
+    - Richer orchestration
+    - Weaker semantic adherence
+    - Best for: Textured, complex arrangements
+  </Tab>
+  <Tab title="turbo-shift3">
+    **Distilled with shift=3**
+    
+    - Clearer overall structure
+    - Stronger prompt following
+    - Richer timbre, but may sound "dry"
+    - Minimal orchestration complexity
+    - Best for: Simple, clean production
+  </Tab>
+  <Tab title="turbo-continuous">
+    **Experimental: Continuous shift 1-5**
+    
+    - Supports dynamic shift tuning at inference
+    - Most flexible configuration
+    - Less thoroughly tested
+    - Best for: Advanced users experimenting with shift
+  </Tab>
+</Tabs>
+
+<Note>
+  **What is shift?** Shift determines timestep allocation during diffusion. Higher shift = more focus on early denoising (building structure), lower shift = more even distribution (refining details).
+</Note>
+
+### acestep-v15-turbo-rl
+
+<Card title="Coming Soon" icon="hourglass">
+  Reinforcement learning enhanced turbo model with improved alignment and quality.
+</Card>
+
+**Expected Improvements:**
+- Better prompt adherence
+- Improved lyric-audio alignment
+- Enhanced musical coherence
+- Quality comparable to Suno v5
+
+## SFT Model
+
+### acestep-v15-sft
+
+**50-step model with Classifier-Free Guidance support**
+
+```python
+params = GenerationParams(
+    caption="dreamy synthwave ballad",
+    inference_steps=50,
+    guidance_scale=7.0  # CFG supported
+)
+```
+
+**Key Features:**
+- **CFG tuning** — Adjust `guidance_scale` (1.0-15.0) for prompt adherence
+- **50 inference steps** — More time for detail refinement
+- **Better semantic parsing** — Compared to turbo, better at complex prompts
+- **Supervised fine-tuning** — Enhanced instruction following
+
+**Trade-offs:**
+- Slower generation (6x more steps)
+- Slight quality reduction from error accumulation
+- More VRAM usage during inference
+
+**Best For:**
+- Users who don't mind longer inference time
+- Fine-tuning CFG for specific needs
+- Complex prompt interpretation
+- Production workflows prioritizing quality over speed
+
+```bash
+# Download SFT model
+uv run acestep-download --model acestep-v15-sft
+```
+
+## Base Model
+
+### acestep-v15-base
+
+<Card title="Master of All Tasks" icon="crown">
+  The only model supporting advanced audio manipulation tasks: extract, lego, and complete.
+</Card>
+
+**Exclusive Capabilities:**
+
+<CardGroup cols={3}>
+  <Card title="Extract" icon="filter">
+    Separate single tracks from mixed audio (e.g., isolate vocals)
+  </Card>
+  <Card title="Lego" icon="plus">
+    Add new tracks to existing audio (e.g., add drums to guitar)
+  </Card>
+  <Card title="Complete" icon="wand-magic-sparkles">
+    Generate full accompaniment for single tracks
+  </Card>
+</CardGroup>
+
+**Additional Features:**
+- **Strongest plasticity** — Best foundation for large-scale fine-tuning
+- **CFG support** — Full guidance scale control
+- **50 steps** — Comprehensive diffusion process
+
+**Best For:**
+- Track separation and stem extraction
+- Multi-track composition workflows
+- Custom model training foundation
+- Advanced audio manipulation
+
+```bash
+# Download base model
+uv run acestep-download --model acestep-v15-base
+```
+
+## LM Models (Language Model)
+
+### Overview Table
+
+| LM Model | Base | Pre-Training | SFT | RL | CoT | Query Rewrite | Audio Understanding | Composition | Copy Melody |
+|----------|------|:------------:|:---:|:--:|:---:|:-------------:|:-------------------:|:-----------:|:-----------:|
+| `acestep-5Hz-lm-0.6B` | Qwen3-0.6B | ✅ | ✅ | ✅ | ✅ | ✅ | Medium | Medium | Weak |
+| `acestep-5Hz-lm-1.7B` | Qwen3-1.7B | ✅ | ✅ | ✅ | ✅ | ✅ | Medium | Medium | Medium |
+| `acestep-5Hz-lm-4B` | Qwen3-4B | ✅ | ✅ | ✅ | ✅ | ✅ | Strong | Strong | Strong |
+
+### Choosing an LM
+
+<Tabs>
+  <Tab title="No LM">
+    **Disable thinking mode**
+    
+    **Speed:** ⚡⚡⚡⚡ Fastest
+    
+    **Best For:**
+    - Cover mode (audio reference provides structure)
+    - You provide all metadata manually
+    - Maximum generation speed
+    - VRAM < 4GB
+    
+    ```python
+    params = GenerationParams(
+        thinking=False,  # Disable LM
+        caption="...",
+        bpm=120,  # Manual metadata
+        keyscale="C Major"
+    )
+    ```
+  </Tab>
+  <Tab title="0.6B">
+    **acestep-5Hz-lm-0.6B**
+    
+    **Speed:** ⚡⚡⚡ Fast  
+    **World Knowledge:** Basic  
+    **Memory:** Weak
+    
+    **Best For:**
+    - VRAM 6-8GB
+    - Rapid prototyping
+    - Simple prompts
+    - Low-resource environments
+    
+    ```bash
+    uv run acestep-download --model acestep-5Hz-lm-0.6B
+    ```
+  </Tab>
+  <Tab title="1.7B (Default)">
+    **acestep-5Hz-lm-1.7B**
+    
+    **Speed:** ⚡⚡ Medium  
+    **World Knowledge:** Medium  
+    **Memory:** Medium
+    
+    **Best For:**
+    - VRAM 8-16GB (default recommendation)
+    - Balanced quality and speed
+    - General-purpose use
+    - Most users
+    
+    ```bash
+    uv run acestep-download --model acestep-5Hz-lm-1.7B
+    ```
+  </Tab>
+  <Tab title="4B">
+    **acestep-5Hz-lm-4B**
+    
+    **Speed:** ⚡ Slower  
+    **World Knowledge:** Rich  
+    **Memory:** Strong
+    
+    **Best For:**
+    - VRAM > 16GB
+    - Complex compositions
+    - Long-tail styles/instruments
+    - Best quality generation
+    - Reference audio melody copying
+    
+    ```bash
+    uv run acestep-download --model acestep-5Hz-lm-4B
+    ```
+  </Tab>
+</Tabs>
+
+### VRAM Requirements
+
+| GPU VRAM | Recommended LM | Backend | Notes |
+|----------|---------------|---------|-------|
+| **≤6GB** | None (DiT only) | — | LM disabled; INT8 quantization + CPU offload |
+| **6-8GB** | `0.6B` | `pt` | Lightweight LM with PyTorch backend |
+| **8-16GB** | `0.6B` / `1.7B` | `vllm` | 0.6B for 8-12GB, 1.7B for 12-16GB |
+| **16-24GB** | `1.7B` | `vllm` | 4B available on 20GB+; no offload on 20GB+ |
+| **≥24GB** | `4B` | `vllm` | Best quality, all models fit without offload |
+
+## Custom Models (LoRA)
+
+<Card title="Train Your Own" icon="graduation-cap">
+  Create custom models with your own aesthetic using LoRA fine-tuning.
+</Card>
+
+**What You Can Customize:**
+- **Timbre preferences** — Train on songs with specific sonic characteristics
+- **Genre specialization** — Fine-tune for specific musical styles
+- **Personal taste** — Teach the model your unique aesthetic
+
+**Training Requirements:**
+- 8+ songs for basic customization
+- 20+ songs for strong style capture
+- 1 hour training time on RTX 3090 (12GB VRAM)
+
+**Resources:**
+- [LoRA Training Tutorial](/training/lora-training)
+- Gradio UI "LoRA Training" tab for one-click training
+- Example: "Happy New Year" themed LoRA (festive atmosphere)
+
+```bash
+# Train LoRA in Gradio UI
+uv run acestep
+# Navigate to "LoRA Training" tab
+```
+
+## Model Selection Guide
+
+### By Use Case
+
+| Use Case | DiT Model | LM Model |
+|----------|-----------|----------|
+| **Daily music generation** | `turbo` | `1.7B` |
+| **Maximum speed** | `turbo` | No LM or `0.6B` |
+| **Best quality** | `sft` or `turbo-rl` | `4B` |
+| **Track separation** | `base` | `1.7B` |
+| **Multi-track composition** | `base` | `1.7B` |
+| **Custom fine-tuning** | `base` | — |
+| **Low VRAM (< 4GB)** | `turbo` + INT8 | No LM |
+| **Complex prompts** | `sft` | `4B` |
+
+### Download Commands
+
+```bash
+# Download default models (turbo + 1.7B LM)
+uv run acestep-download
+
+# Download all models
+uv run acestep-download --all
+
+# Download specific model
+uv run acestep-download --model acestep-v15-base
+uv run acestep-download --model acestep-5Hz-lm-4B
+
+# List available models
+uv run acestep-download --list
+```
+
+## Model Hosting
+
+<CardGroup cols={2}>
+  <Card title="Hugging Face" icon="🤗" href="https://huggingface.co/ACE-Step">
+    Official model repository with all variants
+  </Card>
+  <Card title="ModelScope" icon="cube" href="https://modelscope.cn/models/ACE-Step/Ace-Step1.5">
+    Mirror for users in China
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="diagram-project" href="/model/architecture">
+    Understand how LM and DiT work together
+  </Card>
+  <Card title="Performance" icon="gauge-high" href="/model/performance">
+    See benchmark results for each model
+  </Card>
+  <Card title="Tutorial" icon="graduation-cap" href="/model/tutorial">
+    Learn how to choose the right model
+  </Card>
+  <Card title="Installation" icon="download" href="/installation">
+    Install and configure models
+  </Card>
+</CardGroup>

@@ -1,0 +1,192 @@
+---
+title: Introduction to ACE-Step 1.5
+description: Commercial-grade open-source music generation that runs on consumer hardware
+---
+
+## Overview
+
+ACE-Step 1.5 is a highly efficient open-source music foundation model that brings **commercial-grade generation to consumer hardware**. It achieves quality beyond most commercial music models while remaining extremely fast—under 2 seconds per full song on an A100 and under 10 seconds on an RTX 3090.
+
+<Note>
+ACE-Step 1.5 runs locally with **less than 4GB of VRAM** and supports lightweight personalization through LoRA training from just a few songs.
+</Note>
+
+## What Makes ACE-Step 1.5 Unique?
+
+### Hybrid Architecture
+
+At its core lies a novel hybrid architecture where the Language Model (LM) functions as an **omni-capable planner**:
+
+- Transforms simple user queries into comprehensive song blueprints
+- Scales from short loops to 10-minute compositions
+- Synthesizes metadata, lyrics, and captions via Chain-of-Thought
+- Guides the Diffusion Transformer (DiT) with precise instructions
+
+<Tip>
+The alignment between LM and DiT is achieved through **intrinsic reinforcement learning**, eliminating biases from external reward models or human preferences.
+</Tip>
+
+### Key Capabilities
+
+<CardGroup cols={2}>
+  <Card title="Ultra-Fast Generation" icon="bolt">
+    - Under 2s per full song on A100
+    - Under 10s on RTX 3090
+    - 0.5s to 10s on A100 depending on mode
+  </Card>
+  
+  <Card title="Flexible Duration" icon="clock">
+    - 10 seconds to 10 minutes (600s)
+    - Batch generation up to 8 songs
+    - Adaptive GPU memory management
+  </Card>
+  
+  <Card title="Commercial-Grade Output" icon="star">
+    - Quality between Suno v4.5 and v5
+    - 1000+ instruments and styles
+    - Fine-grained timbre description
+  </Card>
+  
+  <Card title="Multi-Language Support" icon="language">
+    - 50+ languages with lyrics
+    - Automatic language detection
+    - Prompt structure & style control
+  </Card>
+</CardGroup>
+
+## Core Features
+
+### Generation & Control
+
+| Feature | Description |
+|---------|-------------|
+| **Reference Audio Input** | Use reference audio to guide generation style |
+| **Cover Generation** | Create covers from existing audio |
+| **Repaint & Edit** | Selective local audio editing and regeneration |
+| **Track Separation** | Separate audio into individual stems |
+| **Multi-Track Generation** | Add layers like Suno Studio's "Add Layer" feature |
+| **Vocal2BGM** | Auto-generate accompaniment for vocal tracks |
+
+### Metadata & Configuration
+
+| Feature | Description |
+|---------|-------------|
+| **Metadata Control** | Control duration, BPM, key/scale, time signature |
+| **Simple Mode** | Generate full songs from simple descriptions |
+| **Query Rewriting** | Auto LM expansion of tags and lyrics |
+| **Audio Understanding** | Extract BPM, key/scale, time signature & caption from audio |
+| **LRC Generation** | Auto-generate lyric timestamps for generated music |
+
+### Training & Quality
+
+<Steps>
+  <Step title="LoRA Training">
+    One-click annotation & training in Gradio. Train on 8 songs in 1 hour on RTX 3090 (12GB VRAM).
+  </Step>
+  
+  <Step title="Quality Scoring">
+    Automatic quality assessment for generated audio to help you select the best outputs.
+  </Step>
+  
+  <Step title="Style Personalization">
+    Capture your own musical style with lightweight LoRA adapters trained from just a few examples.
+  </Step>
+</Steps>
+
+## Hardware Requirements
+
+<Warning>
+While ACE-Step 1.5 can run on GPUs with as little as 4GB VRAM, performance and features scale with available memory.
+</Warning>
+
+### Minimum Requirements
+
+| Component | Requirement |
+|-----------|-------------|
+| **Python** | 3.11-3.12 (stable release) |
+| **GPU** | CUDA GPU recommended |
+| **VRAM** | ≥4GB for DiT-only mode, ≥6GB for LLM+DiT |
+| **Disk Space** | ~10GB for core models |
+
+### Supported Platforms
+
+- **NVIDIA GPUs**: CUDA 12.8+ (Windows, Linux)
+- **AMD GPUs**: ROCm 6.0+ (Linux), ROCm 7.2 (Windows with Python 3.12)
+- **Intel GPUs**: XPU support (Windows, Linux)
+- **Apple Silicon**: MPS/MLX backend (M1/M2/M3/M4)
+- **CPU**: CPU-only mode for inference (not recommended for training)
+
+## Model Selection Guide
+
+<Tip>
+ACE-Step automatically selects the best configuration for your GPU. All settings (LM model, backend, offloading, quantization) are tier-aware and pre-configured.
+</Tip>
+
+| Your GPU VRAM | Recommended LM Model | Backend | Notes |
+|---------------|---------------------|---------|-------|
+| **≤6GB** | None (DiT only) | — | LM disabled by default; INT8 quantization + full CPU offload |
+| **6-8GB** | `acestep-5Hz-lm-0.6B` | `pt` | Lightweight LM with PyTorch backend |
+| **8-16GB** | `acestep-5Hz-lm-0.6B` / `1.7B` | `vllm` | 0.6B for 8-12GB, 1.7B for 12-16GB |
+| **16-24GB** | `acestep-5Hz-lm-1.7B` | `vllm` | 4B available on 20GB+; no offload needed on 20GB+ |
+| **≥24GB** | `acestep-5Hz-lm-4B` | `vllm` | Best quality, all models fit without offload |
+
+## Available Models
+
+### DiT Models
+
+| Model | Features | Best For |
+|-------|----------|----------|
+| `acestep-v15-turbo` | ✅ SFT, 8 steps, very high quality | **Production use (default)** |
+| `acestep-v15-sft` | ✅ SFT, 50 steps, high quality | High-quality generation with more control |
+| `acestep-v15-base` | ✅ Pre-training, 50 steps, CFG support | Extract, Lego, Complete tasks; Fine-tuning |
+| `acestep-v15-turbo-rl` | ✅ SFT + RL, 8 steps | To be released |
+
+### LM Models
+
+| Model | Parameters | Composition Capability | Hugging Face |
+|-------|-----------|------------------------|-------------|
+| `acestep-5Hz-lm-0.6B` | 0.6B | Medium | [Link](https://huggingface.co/ACE-Step/acestep-5Hz-lm-0.6B) |
+| `acestep-5Hz-lm-1.7B` | 1.7B | Medium | [Link](https://huggingface.co/ACE-Step/Ace-Step1.5) |
+| `acestep-5Hz-lm-4B` | 4B | Strong | [Link](https://huggingface.co/ACE-Step/acestep-5Hz-lm-4B) |
+
+## Use Cases
+
+ACE-Step 1.5 is designed for:
+
+- **Music Artists & Producers**: Create original compositions, generate backing tracks, experiment with styles
+- **Content Creators**: Generate royalty-free music for videos, podcasts, and streams
+- **Game Developers**: Create dynamic music assets and adaptive soundtracks
+- **Researchers**: Explore music generation, style transfer, and AI-assisted composition
+- **Educators**: Teach music theory, composition, and AI applications in creative arts
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Discord Community" icon="discord" href="https://discord.gg/PeWDxrkdj7">
+    Join our Discord for support and discussion
+  </Card>
+  
+  <Card title="GitHub Issues" icon="github" href="https://github.com/ACE-Step/ACE-Step-1.5/issues">
+    Report bugs and request features
+  </Card>
+  
+  <Card title="Technical Report" icon="file-lines" href="https://arxiv.org/abs/2602.00744">
+    Read the research paper
+  </Card>
+  
+  <Card title="Awesome ACE-Step" icon="star" href="https://github.com/ace-step/awesome-ace-step">
+    Community projects and integrations
+  </Card>
+</CardGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart" icon="rocket" href="/quickstart">
+    Generate your first song in minutes
+  </Card>
+  
+  <Card title="Installation" icon="download" href="/installation">
+    Detailed installation guide for all platforms
+  </Card>
+</CardGroup>

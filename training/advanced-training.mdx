@@ -1,0 +1,636 @@
+---
+title: Advanced Training with Side-Step
+description: Advanced LoRA/LoKR training toolkit with corrected timestep sampling, gradient estimation, and VRAM optimization
+---
+
+Side-Step is an advanced training toolkit for ACE-Step 1.5 that provides corrected timestep sampling, LoKR adapters, CLI-based workflows, VRAM optimizations, and gradient sensitivity analysis.
+
+<Note>
+Side-Step is integrated into ACE-Step 1.5 and available via `train.py`. For the standalone version with additional features and more frequent updates, visit [koda-dernet/Side-Step](https://github.com/koda-dernet/Side-Step).
+</Note>
+
+---
+
+## Overview
+
+Side-Step supports two adapter types and two training modes:
+
+|  | Corrected (Fixed) | Vanilla (Original) |
+|---|---|---|
+| **LoRA** (PEFT) | **Recommended** | For reproducing old results |
+| **LoKR** (LyCORIS) | **Experimental** | Experimental |
+
+### Corrected Mode (Recommended)
+
+The default and recommended training mode:
+
+- **Continuous logit-normal timestep sampling** — Matches how base/SFT models were trained
+- **15% CFG dropout** — Teaches the model to handle both prompted and unprompted generation
+- **Standalone** — No base ACE-Step installation needed
+- **All model variants** — Works with turbo, base, and sft
+
+### Vanilla Mode
+
+Reproduces the original ACE-Step training behavior:
+
+- Discrete 8-step timestep schedule (hardcoded for turbo)
+- No CFG dropout
+- Requires base ACE-Step installed alongside
+
+<Tip>
+Use **corrected mode** unless you specifically need to reproduce results from the original trainer.
+</Tip>
+
+---
+
+## Quick Start: Interactive Wizard
+
+The easiest way to train with Side-Step:
+
+```bash
+uv run python train.py
+```
+
+The wizard walks you through:
+
+<Steps>
+
+### Select adapter type
+Choose between LoRA or LoKR
+
+### Choose training mode
+Corrected (recommended) or Vanilla
+
+### Pick your model
+Interactive selector with fuzzy search
+
+### Configure hyperparameters
+Basic mode uses good defaults; Advanced mode exposes everything
+
+### Confirm and start
+Review settings and begin training
+
+</Steps>
+
+### Wizard Features
+
+- **Go-back navigation** — Type `b` at any prompt to return to the previous question
+- **Presets** — Save and load named configurations (main menu > Manage presets)
+- **Flow chaining** — After preprocessing, wizard offers to start training immediately
+- **Settings** — Configure checkpoint paths and vanilla mode (main menu > Settings)
+- **Session loop** — Wizard stays open after each action, no need to restart
+
+---
+
+## Quick Start: CLI
+
+For automated pipelines or when you know exactly what you want:
+
+### Preprocessing
+
+Convert raw audio to training tensors:
+
+<CodeGroup>
+```bash With Metadata JSON
+uv run python train.py fixed \
+    --checkpoint-dir ../ACE-Step-1.5/checkpoints \
+    --model-variant base \
+    --preprocess \
+    --dataset-json ./my_dataset.json \
+    --audio-dir ./my_audio \
+    --tensor-output ./my_tensors
+```
+
+```bash Without Metadata
+uv run python train.py fixed \
+    --checkpoint-dir ../ACE-Step-1.5/checkpoints \
+    --model-variant turbo \
+    --preprocess \
+    --audio-dir ./my_audio \
+    --tensor-output ./my_tensors
+```
+</CodeGroup>
+
+<Note>
+Preprocessing runs in **two passes** to minimize VRAM:
+
+1. **Pass 1** (~3 GB): VAE + Text Encoder → encodes audio to latents, text to embeddings
+2. **Pass 2** (~6 GB): DiT Encoder → generates condition encodings
+</Note>
+
+### Training
+
+<CodeGroup>
+```bash LoRA (Recommended)
+uv run python train.py fixed \
+    --checkpoint-dir ../ACE-Step-1.5/checkpoints \
+    --model-variant base \
+    --dataset-dir ./my_tensors \
+    --output-dir ./output/my_lora \
+    --epochs 100 \
+    --lr 1e-4
+```
+
+```bash LoKR (Experimental)
+uv run python train.py fixed \
+    --checkpoint-dir ../ACE-Step-1.5/checkpoints \
+    --model-variant base \
+    --adapter-type lokr \
+    --dataset-dir ./my_tensors \
+    --output-dir ./output/my_lokr \
+    --epochs 100
+```
+
+```bash Training on Fine-tune
+uv run python train.py fixed \
+    --checkpoint-dir ../ACE-Step-1.5/checkpoints \
+    --model-variant my-custom-finetune \
+    --base-model base \
+    --dataset-dir ./my_tensors \
+    --output-dir ./output/finetune_lora
+```
+</CodeGroup>
+
+---
+
+## LoRA vs LoKR
+
+### LoRA (Low-Rank Adaptation)
+
+- Uses the **PEFT** library
+- Well-tested, stable, widely supported
+- Adds low-rank matrices to attention layers
+- **Good defaults:** rank 64, alpha 128
+
+**When to use:**
+- Production use cases
+- Maximum stability and compatibility
+- Standard adapter workflows
+
+### LoKR (Low-Rank Kronecker)
+
+- Uses the **LyCORIS** library (included automatically)
+- **Experimental** — may have rough edges
+- Uses Kronecker product factorization instead of simple low-rank decomposition
+- **10× faster training** — What takes an hour with LoRA completes in ~5 minutes with LoKR
+- May capture different patterns than LoRA
+
+**When to use:**
+- Consumer-grade GPUs where training time matters
+- Experimentation with alternative decomposition methods
+- When you need rapid iteration
+
+<Warning>
+LoKR is experimental. The LyCORIS + Lightning Fabric interaction has not been exhaustively tested. If you encounter issues, fall back to LoRA.
+</Warning>
+
+<Tip>
+**Preprocessing is adapter-agnostic:** The same `.pt` tensor files work for both LoRA and LoKR. You only need to preprocess once.
+</Tip>
+
+---
+
+## Hyperparameter Guide
+
+### Learning Rate
+
+| Optimizer | Recommended LR | Notes |
+|-----------|----------------|-------|
+| **AdamW** | `1e-4` | Standard choice |
+| **AdamW8bit** | `1e-4` | Same as AdamW but saves ~30% optimizer VRAM |
+| **Adafactor** | `1e-4` | Minimal state memory |
+| **Prodigy** | `1.0` | Auto-tunes the actual LR. Set scheduler to `constant` |
+
+### Rank (LoRA) / Linear Dim (LoKR)
+
+| Rank | Capacity | VRAM | Use Case |
+|------|----------|------|----------|
+| **16** | Low | Minimal | Quick tests, very small datasets |
+| **64** | Medium | Standard | **Recommended default** |
+| **128** | High | Higher | Large datasets, maximum quality |
+
+<Tip>
+With targeted module selection (via gradient estimation), a rank-32 adapter on 16 carefully chosen modules can outperform a rank-64 adapter spread across all 80+ modules.
+</Tip>
+
+### Epochs
+
+Depends heavily on dataset size:
+
+- **1-10 songs:** 200-500 epochs
+- **10-50 songs:** 100-200 epochs
+- **50+ songs:** 50-100 epochs
+
+<Note>
+Watch the loss curve in TensorBoard. If it plateaus, you can stop early.
+</Note>
+
+---
+
+## VRAM Optimization
+
+Side-Step applies several optimizations automatically and exposes others as options.
+
+### Automatic Optimizations
+
+<AccordionGroup>
+  <Accordion title="Gradient Checkpointing (ON by default)">
+    **What it does:** Recomputes activations during backward pass instead of storing them.
+    
+    **VRAM savings:** ~40-60% reduction in activation memory (~10-30 GB for large batches)
+    
+    **Trade-off:** ~10-30% slower training
+    
+    **How to disable:** CLI: `--no-gradient-checkpointing`
+  </Accordion>
+  
+  <Accordion title="Flash Attention 2 (Auto-installed)">
+    **What it does:** Fused attention kernels for better GPU utilization.
+    
+    **VRAM savings:** Reduces attention memory from O(N²) to O(N)
+    
+    **Speed benefit:** 10-30% faster on supported hardware
+    
+    **Requirements:** NVIDIA Ampere+ GPU (RTX 30xx or newer)
+    
+    **Fallback:** Uses SDPA on older hardware
+  </Accordion>
+</AccordionGroup>
+
+### User-Configurable Optimizations
+
+<AccordionGroup>
+  <Accordion title="8-bit Optimizer (saves ~30% optimizer VRAM)">
+    Replaces 32-bit AdamW with 8-bit quantized version.
+    
+    ```bash
+    --optimizer-type adamw8bit
+    ```
+    
+    **VRAM savings:** ~2-3 GB for rank-64 LoRA (~10M parameters)
+    
+    **Trade-off:** Negligible quality difference
+  </Accordion>
+  
+  <Accordion title="Encoder Offloading (saves ~2-4 GB)">
+    Moves VAE and text encoder to CPU after setup.
+    
+    ```bash
+    --offload-encoder
+    ```
+    
+    **VRAM savings:** ~2-4 GB depending on model
+    
+    **Trade-off:** None (these components aren't used during training loop)
+  </Accordion>
+  
+  <Accordion title="Lower Rank (reduces parameter count)">
+    Use rank 16 instead of 64.
+    
+    ```bash
+    --lora-r 16
+    ```
+    
+    **VRAM savings:** ~4× less adapter VRAM
+    
+    **Trade-off:** Lower capacity to capture dataset style
+  </Accordion>
+</AccordionGroup>
+
+### VRAM Profiles by GPU Tier
+
+| GPU VRAM | Profile | Settings |
+|----------|---------|----------|
+| **24 GB+** | Comfortable | Batch 2+, AdamW, Rank 64-128 |
+| **16-24 GB** | Standard | Batch 1, AdamW, Rank 64, Grad accumulation 4 |
+| **10-16 GB** | Tight | Batch 1, **AdamW8bit**, Encoder offload, Rank 32-64 |
+| **Less than 10 GB** | Minimal | Batch 1, **Adafactor**, Encoder offload, Rank 16 |
+
+<Note>
+Gradient checkpointing and Flash Attention are always active (when supported). Profiles differ in optimizer choice, rank, and optional offloading.
+</Note>
+
+---
+
+## Gradient Estimation
+
+Before training, analyze which attention modules are most sensitive to your dataset:
+
+```bash
+uv run python train.py estimate \
+    --checkpoint-dir ../ACE-Step-1.5/checkpoints \
+    --model-variant base \
+    --dataset-dir ./my_tensors \
+    --estimate-batches 5 \
+    --top-k 16
+```
+
+### What Estimation Does
+
+Ranks attention modules by gradient sensitivity to your specific dataset:
+
+```json
+[
+  {"module": "decoder.layers.22.self_attn.q_proj", "sensitivity": 0.04231},
+  {"module": "decoder.layers.22.self_attn.v_proj", "sensitivity": 0.03894},
+  {"module": "decoder.layers.18.cross_attn.k_proj", "sensitivity": 0.03512}
+]
+```
+
+### Why It Matters
+
+- **Targeted training** — Focus adapter on layers that actually respond to your data
+- **Fewer wasted parameters** — Skip layers that barely change
+- **Better results at lower rank** — Rank-32 on 16 targeted modules can beat rank-64 on all modules
+- **Dataset comparison** — Compare where different datasets diverge from base model
+
+### Using Results
+
+If estimation shows layers 18-22 with mostly `q_proj` and `v_proj`:
+
+```bash
+uv run python train.py fixed \
+    --target-modules "q_proj v_proj" \
+    # ... other args
+```
+
+<Card title="Understanding Module Names" icon="layer-group">
+**Self-attention** (`decoder.layers.N.self_attn.*`) — Audio-to-audio patterns (rhythm, structure)
+
+**Cross-attention** (`decoder.layers.N.cross_attn.*`) — Text-to-audio alignment (lyrics, prompts)
+
+**Projections:**
+- `q_proj` — Query (what to look for)
+- `k_proj` — Key (what positions offer)
+- `v_proj` — Value (actual content)
+- `o_proj` — Output projection
+</Card>
+
+---
+
+## Timestep Sampling: Fixed vs Vanilla
+
+### What Shift Does (Inference Only)
+
+The `shift` parameter is an **inference-only** setting that warps the timestep schedule during generation:
+
+```python
+t_shifted = shift * t / (1 + (shift - 1) * t)
+```
+
+- **shift=1.0** (base/sft) — Uniform linear schedule, requires ~50 steps
+- **shift=3.0** (turbo) — Compressed schedule, allows ~8 steps
+
+<Warning>
+`shift` does **NOT** affect training. Training timesteps come from continuous logit-normal sampling controlled by `timestep_mu` and `timestep_sigma` from the model's config.
+</Warning>
+
+### Side-Step Corrected Training
+
+Uses continuous timestep sampling that matches the model's native training:
+
+```python
+t = torch.sigmoid(
+    torch.randn((batch_size,), device=device, dtype=dtype) * timestep_sigma + timestep_mu
+)
+```
+
+**Result:** Side-Step correctly trains adapters for all three model variants (turbo, base, sft).
+
+### Upstream Vanilla Training
+
+Uses discrete timesteps hardcoded from `shift=3.0`:
+
+```python
+TURBO_SHIFT3_TIMESTEPS = [1.0, 0.955, 0.9, 0.833, 0.75, 0.643, 0.5, 0.3]
+```
+
+Each step uniformly samples one of 8 discrete values. This:
+
+1. Does not match how models were trained (continuous vs discrete)
+2. Is hardcoded for turbo only (incorrect for base/sft)
+3. Samples from a fundamentally different distribution
+
+<Tip>
+Use **corrected mode** for training that matches the model's actual training distribution.
+</Tip>
+
+---
+
+## Monitoring Training
+
+### TensorBoard
+
+Side-Step logs metrics automatically:
+
+```bash
+# In a separate terminal
+tensorboard --logdir ./output/my_lora/runs
+
+# Open http://localhost:6006
+```
+
+**Key metrics:**
+
+- `loss/train` — Should decrease over time (spikes are normal)
+- `lr` — Learning rate schedule (warm up then follow scheduler)
+- `grad_norm/*` — Per-layer gradient norms (logged every `--log-heavy-every` steps)
+
+### Log File
+
+All sessions append to `sidestep.log` in the working directory. Captures full tracebacks and debug messages.
+
+---
+
+## Resuming Training
+
+If training is interrupted:
+
+```bash
+uv run python train.py fixed \
+    --checkpoint-dir ../ACE-Step-1.5/checkpoints \
+    --model-variant base \
+    --dataset-dir ./my_tensors \
+    --output-dir ./output/my_lora \
+    --resume-from ./output/my_lora/checkpoint-epoch-50
+```
+
+The checkpoint contains LoRA/LoKR weights, optimizer state, and scheduler state. Training continues from where it left off.
+
+---
+
+## Dataset Preparation
+
+Side-Step supports two modes:
+
+### Folder-Only Mode (Zero Configuration)
+
+```bash
+uv run python train.py fixed --preprocess \
+    --audio-dir ./my_audio \
+    --tensor-output ./my_tensors
+```
+
+Auto-generates metadata:
+- Caption from filename
+- Lyrics: `[Instrumental]`
+- BPM/Key: `N/A`
+
+### JSON Mode (Full Metadata)
+
+**Minimal format:**
+
+```json
+[
+  {"audio_path": "./song1.wav", "caption": "Upbeat pop track"},
+  {"audio_path": "./song2.wav", "caption": "Slow jazz ballad"}
+]
+```
+
+**Full ACE-Step format** (compatible with Dataset Builder output):
+
+```json
+{
+  "metadata": {
+    "custom_tag": "myartist",
+    "tag_position": "prepend",
+    "genre_ratio": 90
+  },
+  "samples": [
+    {
+      "audio_path": "./track1.wav",
+      "caption": "Energetic rock with distorted guitars",
+      "genre": "Rock",
+      "lyrics": "[Verse 1]\nRising up...",
+      "bpm": 140,
+      "keyscale": "E minor",
+      "timesignature": "4",
+      "language": "en",
+      "is_instrumental": false
+    }
+  ]
+}
+```
+
+<Note>
+**ACE-Step Compatibility:** JSONs from ACE-Step's Dataset Builder work directly with Side-Step. All fields are recognized.
+</Note>
+
+---
+
+## Best Practices
+
+<CardGroup cols={2}>
+  <Card title="Start with Wizard" icon="wand-magic">
+    Use the interactive wizard for first-time setup. It guides you through all options and saves presets.
+  </Card>
+  
+  <Card title="Use Estimation" icon="chart-line">
+    Run gradient estimation before training large datasets to identify which modules matter most.
+  </Card>
+  
+  <Card title="Monitor TensorBoard" icon="chart-area">
+    Watch loss curves in real-time. Stop early if loss plateaus.
+  </Card>
+  
+  <Card title="Save Presets" icon="floppy-disk">
+    Once you find good settings, save them as a preset for reuse.
+  </Card>
+</CardGroup>
+
+---
+
+## Troubleshooting
+
+### LoKR Training Issues
+
+<Warning>
+If LoKR training fails with LyCORIS/Lightning Fabric errors, fall back to LoRA. LoKR is experimental.
+</Warning>
+
+### Model Variant Errors
+
+Ensure your checkpoint directory structure matches:
+
+```
+checkpoints/
+├── turbo/
+├── base/
+└── sft/
+```
+
+### Preprocessing Failures
+
+Check that:
+- Audio files are valid and readable
+- JSON paths are relative to the JSON file's directory
+- You have write permissions to output directory
+
+---
+
+## Command Reference
+
+<Accordion title="Complete CLI options">
+```bash
+# Preprocessing
+uv run python train.py fixed \
+    --preprocess \
+    --checkpoint-dir ./checkpoints \
+    --model-variant turbo \
+    --audio-dir ./audio \
+    --dataset-json ./dataset.json \
+    --tensor-output ./tensors \
+    --max-duration 240.0
+
+# Training
+uv run python train.py fixed \
+    --checkpoint-dir ./checkpoints \
+    --model-variant turbo \
+    --dataset-dir ./tensors \
+    --output-dir ./output \
+    --adapter-type lora \
+    --lora-r 64 \
+    --lora-alpha 128 \
+    --epochs 100 \
+    --batch-size 1 \
+    --lr 1e-4 \
+    --optimizer-type adamw \
+    --scheduler-type cosine \
+    --gradient-checkpointing \
+    --offload-encoder \
+    --log-every 10 \
+    --save-every-n-epochs 10
+
+# Estimation
+uv run python train.py estimate \
+    --checkpoint-dir ./checkpoints \
+    --model-variant base \
+    --dataset-dir ./tensors \
+    --estimate-batches 5 \
+    --top-k 16 \
+    --granularity module \
+    --estimate-output ./estimate.json
+```
+</Accordion>
+
+---
+
+## See Also
+
+<CardGroup cols={2}>
+  <Card title="LoRA Training Basics" icon="graduation-cap" href="/training/lora-training">
+    Start here if you're new to LoRA training
+  </Card>
+  
+  <Card title="Generation Guide" icon="music" href="/usage/python-api">
+    Use your trained adapters for music generation
+  </Card>
+  
+  <Card title="Side-Step Repository" icon="github" href="https://github.com/koda-dernet/Side-Step">
+    Standalone version with additional features
+  </Card>
+  
+  <Card title="API Reference" icon="code" href="/api-reference/introduction">
+    Programmatic training via Python API
+  </Card>
+</CardGroup>

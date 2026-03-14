@@ -1,0 +1,724 @@
+---
+title: 'REST API'
+description: 'HTTP-based asynchronous music generation API for ACE-Step'
+icon: 'server'
+---
+
+The REST API provides HTTP-based access to ACE-Step's music generation capabilities, enabling remote access, web integration, and service-oriented architectures.
+
+## Overview
+
+The API uses an asynchronous task-based workflow:
+
+<Steps>
+  <Step title="Submit Task">
+    Call `POST /release_task` to create a generation task and receive a `task_id`
+  </Step>
+  <Step title="Query Status">
+    Call `POST /query_result` to check task status (queued/running/succeeded/failed)
+  </Step>
+  <Step title="Download Audio">
+    Use `GET /v1/audio` URLs from results to download generated files
+  </Step>
+</Steps>
+
+## Quick Start
+
+<CodeGroup>
+```bash cURL
+# Submit task
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "prompt": "upbeat pop song",
+    "thinking": true,
+    "batch_size": 2
+  }'
+
+# Query result
+curl -X POST http://localhost:8001/query_result \
+  -H 'Content-Type: application/json' \
+  -d '{"task_id_list": ["550e8400-e29b-41d4-a716-446655440000"]}'
+
+# Download audio
+curl "http://localhost:8001/v1/audio?path=%2Ftmp%2Faudio%2Fabc123.mp3" -o output.mp3
+```
+
+```python Python
+import requests
+import time
+
+API_BASE = "http://localhost:8001"
+
+# Submit task
+response = requests.post(f"{API_BASE}/release_task", json={
+    "prompt": "upbeat pop song",
+    "thinking": True,
+    "batch_size": 2
+})
+task_id = response.json()["data"]["task_id"]
+
+# Poll for results
+while True:
+    response = requests.post(f"{API_BASE}/query_result", json={
+        "task_id_list": [task_id]
+    })
+    status = response.json()["data"][0]["status"]
+    
+    if status == 1:  # Success
+        result = response.json()["data"][0]["result"]
+        print(f"Audio URL: {result[0]['file']}")
+        break
+    elif status == 2:  # Failed
+        print("Generation failed")
+        break
+    
+    time.sleep(5)
+```
+
+```javascript JavaScript
+const API_BASE = 'http://localhost:8001';
+
+// Submit task
+const response = await fetch(`${API_BASE}/release_task`, {
+  method: 'POST',
+  headers: {'Content-Type': 'application/json'},
+  body: JSON.stringify({
+    prompt: 'upbeat pop song',
+    thinking: true,
+    batch_size: 2
+  })
+});
+
+const {data} = await response.json();
+const taskId = data.task_id;
+
+// Poll for results
+const poll = async () => {
+  const res = await fetch(`${API_BASE}/query_result`, {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({task_id_list: [taskId]})
+  });
+  
+  const {data} = await res.json();
+  const status = data[0].status;
+  
+  if (status === 1) {
+    console.log('Audio URL:', data[0].result[0].file);
+  } else if (status === 2) {
+    console.log('Failed');
+  } else {
+    setTimeout(poll, 5000);
+  }
+};
+
+poll();
+```
+</CodeGroup>
+
+## Authentication
+
+The API supports optional API key authentication.
+
+### Configuration
+
+<CodeGroup>
+```bash Environment Variable
+export ACESTEP_API_KEY=your-secret-key
+python -m acestep.api_server
+```
+
+```bash Command Line
+python -m acestep.api_server --api-key your-secret-key
+```
+</CodeGroup>
+
+### Authentication Methods
+
+<Tabs>
+  <Tab title="Body Token">
+    ```json
+    {
+      "ai_token": "your-api-key",
+      "prompt": "upbeat pop song"
+    }
+    ```
+  </Tab>
+  
+  <Tab title="Authorization Header">
+    ```bash
+    curl -X POST http://localhost:8001/release_task \
+      -H 'Authorization: Bearer your-api-key' \
+      -H 'Content-Type: application/json' \
+      -d '{"prompt": "upbeat pop song"}'
+    ```
+  </Tab>
+</Tabs>
+
+## Response Format
+
+All API responses use a unified wrapper:
+
+```json
+{
+  "data": { /* actual response data */ },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `data` | any | Actual response data |
+| `code` | int | Status code (200=success) |
+| `error` | string | Error message (null on success) |
+| `timestamp` | int | Response timestamp (milliseconds) |
+| `extra` | any | Extra information |
+
+## Task Status Codes
+
+| Code | Status | Description |
+|------|--------|-------------|
+| `0` | queued/running | Task is queued or in progress |
+| `1` | succeeded | Generation succeeded, result ready |
+| `2` | failed | Generation failed |
+
+## Endpoints
+
+### POST /release_task
+
+Create a music generation task.
+
+**Content-Type:** `application/json` or `multipart/form-data`
+
+<Tabs>
+  <Tab title="Basic Parameters">
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | `prompt` | string | `""` | Music description (alias: `caption`) |
+    | `lyrics` | string | `""` | Lyrics content |
+    | `thinking` | bool | `false` | Use 5Hz LM for codes/metadata |
+    | `vocal_language` | string | `"en"` | Lyrics language |
+    | `audio_format` | string | `"mp3"` | Output format (mp3, wav, flac) |
+    | `batch_size` | int | `2` | Number of variations (1-8) |
+  </Tab>
+  
+  <Tab title="Sample/Format Mode">
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | `sample_mode` | bool | `false` | Enable sample generation mode |
+    | `sample_query` | string | `""` | Natural language description |
+    | `use_format` | bool | `false` | Enhance caption/lyrics via LM |
+    
+    **Example:**
+    
+    ```bash
+    # Sample mode (auto-generate everything)
+    curl -X POST http://localhost:8001/release_task \
+      -H 'Content-Type: application/json' \
+      -d '{"sample_query": "soft Bengali love song", "thinking": true}'
+    
+    # Format mode (enhance existing input)
+    curl -X POST http://localhost:8001/release_task \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "prompt": "pop rock",
+        "lyrics": "[Verse 1]\\nWalking...",
+        "use_format": true,
+        "thinking": true
+      }'
+    ```
+  </Tab>
+  
+  <Tab title="Multi-Model">
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | `model` | string | null | Select DiT model |
+    
+    **Example:**
+    
+    ```bash
+    # List available models
+    curl http://localhost:8001/v1/models
+    
+    # Use specific model
+    curl -X POST http://localhost:8001/release_task \
+      -H 'Content-Type: application/json' \
+      -d '{
+        "prompt": "electronic dance music",
+        "model": "acestep-v15-turbo",
+        "thinking": true
+      }'
+    ```
+  </Tab>
+  
+  <Tab title="Metadata">
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | `bpm` | int | null | Tempo (30-300) |
+    | `key_scale` | string | `""` | Musical key (e.g., "C Major") |
+    | `time_signature` | string | `""` | Time signature (2, 3, 4, 6) |
+    | `audio_duration` | float | null | Target length (10-600 seconds) |
+    
+    <Note>
+    When `thinking=true`, empty metadata fields are auto-filled by LM.
+    </Note>
+  </Tab>
+  
+  <Tab title="DiT Settings">
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | `inference_steps` | int | `8` | Denoising steps |
+    | `guidance_scale` | float | `7.0` | CFG strength (base model) |
+    | `seed` | int | `-1` | Random seed |
+    | `use_random_seed` | bool | `true` | Use random seed |
+    | `shift` | float | `3.0` | Timestep shift (1.0-5.0) |
+    | `infer_method` | string | `"ode"` | "ode" or "sde" |
+    | `timesteps` | string | null | Custom timesteps (comma-separated) |
+    | `use_adg` | bool | `false` | Adaptive Dual Guidance |
+  </Tab>
+  
+  <Tab title="LM Settings">
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | `lm_temperature` | float | `0.85` | Sampling temperature |
+    | `lm_cfg_scale` | float | `2.5` | LM CFG scale |
+    | `lm_top_k` | int | null | Top-k (0 disables) |
+    | `lm_top_p` | float | `0.9` | Top-p nucleus sampling |
+    | `use_cot_caption` | bool | `true` | Enhance caption via CoT |
+    | `use_cot_language` | bool | `true` | Detect language via CoT |
+    | `allow_lm_batch` | bool | `true` | Parallel LM processing |
+  </Tab>
+  
+  <Tab title="Audio Tasks">
+    | Parameter | Type | Default | Description |
+    |-----------|------|---------|-------------|
+    | `task_type` | string | `"text2music"` | Task type |
+    | `reference_audio_path` | string | null | Reference audio (server path) |
+    | `src_audio_path` | string | null | Source audio (server path) |
+    | `repainting_start` | float | `0.0` | Repaint start (seconds) |
+    | `repainting_end` | float | null | Repaint end (-1 for EOF) |
+    | `audio_cover_strength` | float | `1.0` | Cover strength (0.0-1.0) |
+    
+    **Task Types:**
+    - `text2music` - Generate from text
+    - `cover` - Transform existing audio
+    - `repaint` - Regenerate time segment
+    - `lego` - Add instrument track (base model)
+    - `extract` - Isolate track (base model)
+    - `complete` - Auto-arrange (base model)
+  </Tab>
+</Tabs>
+
+**File Upload (multipart/form-data):**
+
+```bash
+curl -X POST http://localhost:8001/release_task \
+  -F "prompt=remix this song" \
+  -F "src_audio=@/path/to/local/song.mp3" \
+  -F "task_type=repaint"
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "queued",
+    "queue_position": 1
+  },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000
+}
+```
+
+### POST /query_result
+
+Batch query task results.
+
+**Request:**
+
+```json
+{
+  "task_id_list": ["550e8400-e29b-41d4-a716-446655440000"]
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": [
+    {
+      "task_id": "550e8400-e29b-41d4-a716-446655440000",
+      "status": 1,
+      "result": "[{
+        \"file\": \"/v1/audio?path=...\",
+        \"status\": 1,
+        \"prompt\": \"upbeat pop song\",
+        \"metas\": {\"bpm\": 120, \"duration\": 30},
+        \"seed_value\": \"12345,67890\",
+        \"lm_model\": \"acestep-5Hz-lm-0.6B\",
+        \"dit_model\": \"acestep-v15-turbo\"
+      }]"
+    }
+  ],
+  "code": 200
+}
+```
+
+**Result Fields** (after parsing JSON string):
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `file` | string | Audio file URL |
+| `status` | int | Status code (0/1/2) |
+| `prompt` | string | Prompt used |
+| `lyrics` | string | Lyrics used |
+| `metas` | object | Metadata (bpm, duration, keyscale, etc.) |
+| `seed_value` | string | Seeds used (comma-separated) |
+| `lm_model` | string | LM model name |
+| `dit_model` | string | DiT model name |
+
+### POST /format_input
+
+Enhance caption and lyrics using LM.
+
+**Request:**
+
+```json
+{
+  "prompt": "pop rock",
+  "lyrics": "Walking down the street",
+  "param_obj": "{\"duration\": 180, \"language\": \"en\"}"
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "caption": "Enhanced music description",
+    "lyrics": "Formatted lyrics...",
+    "bpm": 120,
+    "key_scale": "C Major",
+    "time_signature": "4",
+    "duration": 180,
+    "vocal_language": "en"
+  },
+  "code": 200
+}
+```
+
+### POST /create_random_sample
+
+Get random example parameters.
+
+**Request:**
+
+```json
+{
+  "sample_type": "simple_mode"  // or "custom_mode"
+}
+```
+
+**Response:**
+
+```json
+{
+  "data": {
+    "caption": "Upbeat pop song with guitar",
+    "lyrics": "[Verse 1]\nSunshine on my face...",
+    "bpm": 120,
+    "key_scale": "G Major",
+    "duration": 180
+  },
+  "code": 200
+}
+```
+
+### GET /v1/models
+
+List available DiT models.
+
+**Response:**
+
+```json
+{
+  "data": {
+    "models": [
+      {"name": "acestep-v15-turbo", "is_default": true},
+      {"name": "acestep-v15-turbo-shift3", "is_default": false}
+    ],
+    "default_model": "acestep-v15-turbo"
+  },
+  "code": 200
+}
+```
+
+### GET /v1/stats
+
+Server runtime statistics.
+
+**Response:**
+
+```json
+{
+  "data": {
+    "jobs": {
+      "total": 100,
+      "queued": 5,
+      "running": 1,
+      "succeeded": 90,
+      "failed": 4
+    },
+    "queue_size": 5,
+    "queue_maxsize": 200,
+    "avg_job_seconds": 8.5
+  },
+  "code": 200
+}
+```
+
+### GET /v1/audio
+
+Download generated audio file.
+
+**Parameters:**
+
+| Parameter | Type | Description |
+|-----------|------|-------------|
+| `path` | string | URL-encoded audio file path |
+
+**Example:**
+
+```bash
+curl "http://localhost:8001/v1/audio?path=%2Ftmp%2Faudio%2Fabc123.mp3" -o output.mp3
+```
+
+### GET /health
+
+Health check endpoint.
+
+**Response:**
+
+```json
+{
+  "data": {
+    "status": "ok",
+    "service": "ACE-Step API",
+    "version": "1.0"
+  },
+  "code": 200
+}
+```
+
+## Environment Variables
+
+<Tabs>
+  <Tab title="Server">
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `ACESTEP_API_HOST` | `127.0.0.1` | Server bind host |
+    | `ACESTEP_API_PORT` | `8001` | Server bind port |
+    | `ACESTEP_API_KEY` | (empty) | API authentication key |
+    | `ACESTEP_API_WORKERS` | `1` | API worker threads |
+  </Tab>
+  
+  <Tab title="Models">
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `ACESTEP_CONFIG_PATH` | `acestep-v15-turbo` | Primary DiT model |
+    | `ACESTEP_CONFIG_PATH2` | (empty) | Secondary DiT model |
+    | `ACESTEP_CONFIG_PATH3` | (empty) | Third DiT model |
+    | `ACESTEP_DEVICE` | `auto` | Device for models |
+    | `ACESTEP_USE_FLASH_ATTENTION` | `true` | Flash attention |
+    | `ACESTEP_OFFLOAD_TO_CPU` | `false` | CPU offloading |
+  </Tab>
+  
+  <Tab title="LM">
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `ACESTEP_INIT_LLM` | auto | Initialize LM at startup |
+    | `ACESTEP_LM_MODEL_PATH` | `acestep-5Hz-lm-0.6B` | Default LM model |
+    | `ACESTEP_LM_BACKEND` | `vllm` | LM backend (vllm/pt) |
+    | `ACESTEP_LM_DEVICE` | (auto) | Device for LM |
+  </Tab>
+  
+  <Tab title="Queue">
+    | Variable | Default | Description |
+    |----------|---------|-------------|
+    | `ACESTEP_QUEUE_MAXSIZE` | `200` | Maximum queue size |
+    | `ACESTEP_QUEUE_WORKERS` | `1` | Queue workers |
+    | `ACESTEP_AVG_JOB_SECONDS` | `5.0` | Avg job duration estimate |
+  </Tab>
+</Tabs>
+
+## Error Handling
+
+**HTTP Status Codes:**
+
+| Code | Description |
+|------|-------------|
+| `200` | Success |
+| `400` | Invalid request |
+| `401` | Unauthorized |
+| `404` | Resource not found |
+| `415` | Unsupported Content-Type |
+| `429` | Server busy (queue full) |
+| `500` | Internal server error |
+
+**Error Response:**
+
+```json
+{
+  "detail": "Error message describing the issue"
+}
+```
+
+## Best Practices
+
+<Card title="Use thinking=true" icon="brain">
+  Enable LM for best quality results with enhanced generation
+</Card>
+
+<Card title="Batch Query" icon="list">
+  Query multiple tasks at once using `/query_result` to reduce API calls
+</Card>
+
+<Card title="Monitor Stats" icon="chart-line">
+  Check `/v1/stats` to understand server load and average job time
+</Card>
+
+<Card title="Multi-Model Setup" icon="layer-group">
+  Set `ACESTEP_CONFIG_PATH2` and `ACESTEP_CONFIG_PATH3` for multiple model support
+</Card>
+
+<Card title="Authentication" icon="lock">
+  Set `ACESTEP_API_KEY` for production to secure your API
+</Card>
+
+<Card title="Sample/Format Modes" icon="wand-magic-sparkles">
+  Use `sample_query` for quick generation or `use_format` to enhance existing inputs
+</Card>
+
+## Example Workflows
+
+<Tabs>
+  <Tab title="Simple Generation">
+    ```python
+    import requests
+    import time
+    
+    API = "http://localhost:8001"
+    
+    # Submit
+    resp = requests.post(f"{API}/release_task", json={
+        "prompt": "calm ambient piano",
+        "thinking": True,
+        "batch_size": 2
+    })
+    task_id = resp.json()["data"]["task_id"]
+    
+    # Poll
+    while True:
+        resp = requests.post(f"{API}/query_result", json={
+            "task_id_list": [task_id]
+        })
+        status = resp.json()["data"][0]["status"]
+        
+        if status == 1:
+            print("Success!")
+            break
+        elif status == 2:
+            print("Failed")
+            break
+        
+        time.sleep(5)
+    ```
+  </Tab>
+  
+  <Tab title="With File Upload">
+    ```python
+    import requests
+    
+    # Upload source audio for cover task
+    files = {
+        'src_audio': open('original.mp3', 'rb')
+    }
+    data = {
+        'prompt': 'orchestral version',
+        'task_type': 'cover',
+        'thinking': 'true'
+    }
+    
+    resp = requests.post(
+        "http://localhost:8001/release_task",
+        files=files,
+        data=data
+    )
+    
+    task_id = resp.json()["data"]["task_id"]
+    ```
+  </Tab>
+  
+  <Tab title="Sample Mode">
+    ```python
+    import requests
+    
+    # Auto-generate from description
+    resp = requests.post(
+        "http://localhost:8001/release_task",
+        json={
+            "sample_query": "energetic K-pop dance track",
+            "thinking": True
+        }
+    )
+    
+    task_id = resp.json()["data"]["task_id"]
+    ```
+  </Tab>
+  
+  <Tab title="Multiple Models">
+    ```python
+    import requests
+    
+    # List available models
+    resp = requests.get("http://localhost:8001/v1/models")
+    models = resp.json()["data"]["models"]
+    
+    # Use specific model
+    resp = requests.post(
+        "http://localhost:8001/release_task",
+        json={
+            "prompt": "electronic music",
+            "model": "acestep-v15-turbo-shift3",
+            "thinking": True
+        }
+    )
+    ```
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Python API" icon="python" href="/usage/python-api">
+    Direct programmatic access
+  </Card>
+  <Card title="CLI" icon="terminal" href="/usage/cli">
+    Command-line interface
+  </Card>
+  <Card title="Gradio UI" icon="grid-2" href="/usage/gradio-ui">
+    Web-based interface
+  </Card>
+  <Card title="Examples" icon="book" href="/quickstart#quick-examples-by-task-type">
+    Complete integration examples
+  </Card>
+</CardGroup>

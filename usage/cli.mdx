@@ -1,0 +1,440 @@
+---
+title: 'Command Line Interface'
+description: 'Interactive wizard and config-driven CLI for ACE-Step inference'
+icon: 'terminal'
+---
+
+The CLI provides a wizard-based and config-driven interface for ACE-Step inference, ideal for automation and scripting workflows.
+
+## Quick Start
+
+<CodeGroup>
+```bash Wizard Mode (Interactive)
+python cli.py
+```
+
+```bash Load Config
+python cli.py --config config.toml
+```
+
+```bash Configure Only
+python cli.py --configure
+```
+
+```bash Edit Existing Config
+python cli.py --configure --config config.toml
+```
+</CodeGroup>
+
+## CLI Flags
+
+| Flag | Description |
+|------|-------------|
+| `-c` / `--config` | Path to a `.toml` configuration file to load |
+| `--configure` | Run wizard to save configuration without generating |
+| `--log-level` | Logging level: `TRACE`, `DEBUG`, `INFO`, `WARNING`, `ERROR`, `CRITICAL` (default: `INFO`) |
+
+## Wizard Flow
+
+<Steps>
+  <Step title="Select Task">
+    Choose from 6 task types:
+    - text2music
+    - cover
+    - repaint
+    - lego (base model)
+    - extract (base model)
+    - complete (base model)
+  </Step>
+  
+  <Step title="Select DiT Model">
+    Choose from locally available models or auto-download
+  </Step>
+  
+  <Step title="Select LM Model">
+    Choose from locally available LM models or auto-download
+  </Step>
+  
+  <Step title="Task-Specific Inputs">
+    Provide source audio, tracks, or other task-specific parameters
+  </Step>
+  
+  <Step title="Caption & Lyrics Mode">
+    For `text2music`:
+    
+    **Simple Mode:**
+    - Enter natural language description
+    - LM auto-generates caption, lyrics, and metadata
+    
+    **Manual Mode:**
+    - Manually input caption and lyrics
+    - Choose lyrics mode: instrumental / auto-generate / file / paste
+  </Step>
+  
+  <Step title="Set Output Count">
+    Specify number of outputs to generate
+  </Step>
+  
+  <Step title="Advanced Parameters (Optional)">
+    Configure metadata, DiT settings, LM settings, output settings
+    
+    <Note>
+    If you skip, wizard fills all optional parameters with defaults from `GenerationParams` and `GenerationConfig`.
+    </Note>
+  </Step>
+  
+  <Step title="Review & Confirm">
+    Review summary and confirm generation
+  </Step>
+  
+  <Step title="Save Configuration">
+    Save settings to a `.toml` file for future use
+  </Step>
+</Steps>
+
+## Configure Mode
+
+<Card title="--configure Flag" icon="gear">
+  The `--configure` flag runs the wizard **without generation** and always saves a config.
+  
+  **Behavior:**
+  - If `--config` is provided, the file is loaded and used as starting values
+  - After the wizard, choose a filename to save (overwriting or new)
+  - The program exits without generation
+</Card>
+
+### Example Workflow
+
+<CodeGroup>
+```bash Create New Config
+python cli.py --configure
+# Follow wizard prompts
+# Save as: my_song_config.toml
+```
+
+```bash Edit Existing Config
+python cli.py --configure --config my_song_config.toml
+# Modify settings in wizard
+# Save (overwrite or new file)
+```
+
+```bash Generate from Config
+python cli.py --config my_song_config.toml
+# Generates music using saved settings
+```
+</CodeGroup>
+
+## Configuration File (.toml)
+
+The wizard saves a `.toml` file containing all parameters. These keys map directly to fields used in `cli.py`.
+
+### Example Config
+
+```toml config.toml
+[task]
+task_type = "text2music"
+
+[models]
+dit_model = "acestep-v15-turbo"
+lm_model = "acestep-5Hz-lm-0.6B"
+device = "auto"
+
+[generation]
+caption = "upbeat electronic dance music with heavy bass"
+lyrics = "[Instrumental]"
+instrumental = true
+bpm = 128
+duration = 30
+batch_size = 2
+
+[dit_settings]
+inference_steps = 8
+shift = 3.0
+infer_method = "ode"
+seed = -1
+
+[lm_settings]
+thinking = true
+lm_temperature = 0.85
+lm_cfg_scale = 2.0
+lm_top_p = 0.9
+
+[output]
+audio_format = "flac"
+save_dir = "./output"
+```
+
+### Loading Config
+
+When you load a config with `--config`, all keys are applied to runtime settings.
+
+```bash
+python cli.py --config config.toml
+```
+
+## Prompt Editing (instruction.txt)
+
+<Note>
+Available when `thinking=true` for fine-tuning the LM prompt before audio-token generation.
+</Note>
+
+### With Config File
+
+When `thinking=True` and config loaded via `--config`:
+
+1. CLI looks for `instruction.txt` in project root
+2. If found, contents are used as pre-loaded formatted prompt
+3. Bypasses interactive editing step
+
+### Without Config File (Wizard Mode)
+
+1. CLI writes LM's formatted prompt to `instruction.txt`
+2. Pauses for manual editing
+3. Reads edited file before audio-token generation proceeds
+
+<Card title="Workflow" icon="edit">
+  This allows fine-tuning the exact prompt (caption, lyrics, metadata) that the LM sees before generating audio codes.
+</Card>
+
+## Task Types
+
+<Tabs>
+  <Tab title="text2music">
+    ### Text2Music
+    
+    Generate music from text descriptions and optional metadata.
+    
+    **Required Inputs:**
+    - Caption or Lyrics (at least one)
+    
+    **Optional Inputs:**
+    - BPM, Key Scale, Time Signature
+    - Duration
+    - Vocal Language
+    
+    **Example:**
+    ```bash
+    python cli.py
+    # Select: 1. text2music
+    # Enter caption: "energetic rock music with electric guitar"
+    # Choose: Instrumental
+    # BPM: 140
+    # Duration: 30
+    ```
+  </Tab>
+  
+  <Tab title="cover">
+    ### Cover
+    
+    Transform existing audio while maintaining structure but changing style.
+    
+    **Required Inputs:**
+    - Source audio file path
+    - Caption describing target style
+    
+    **Optional Inputs:**
+    - Cover strength (0.0-1.0, default: 0.8)
+    - New lyrics
+    
+    **Example:**
+    ```bash
+    python cli.py
+    # Select: 2. cover
+    # Source audio: /path/to/original.mp3
+    # Caption: "jazz piano version"
+    # Cover strength: 0.8
+    ```
+  </Tab>
+  
+  <Tab title="repaint">
+    ### Repaint
+    
+    Regenerate specific time segment while keeping rest intact.
+    
+    **Required Inputs:**
+    - Source audio file path
+    - Repainting start time (seconds)
+    - Repainting end time (seconds, -1 for end)
+    - Caption for repainted section
+    
+    **Example:**
+    ```bash
+    python cli.py
+    # Select: 3. repaint
+    # Source audio: /path/to/song.mp3
+    # Start: 10.0
+    # End: 20.0
+    # Caption: "smooth transition with piano solo"
+    ```
+  </Tab>
+  
+  <Tab title="extract/lego/complete">
+    ### Advanced Tasks (Base Model Only)
+    
+    <Warning>
+    These tasks require the base model, not the turbo variant.
+    </Warning>
+    
+    **Extract** - Isolate specific instrument track
+    
+    ```bash
+    python cli.py
+    # Select: 5. extract
+    # Source audio: /path/to/mix.mp3
+    # Track: vocals
+    ```
+    
+    **Lego** - Add new instrument track
+    
+    ```bash
+    python cli.py
+    # Select: 4. lego
+    # Source audio: /path/to/backing.mp3
+    # Track: guitar
+    # Caption: "lead guitar melody with bluesy feel"
+    ```
+    
+    **Complete** - Auto-arrange with specified instruments
+    
+    ```bash
+    python cli.py
+    # Select: 6. complete
+    # Source audio: /path/to/incomplete.mp3
+    # Tracks: drums, bass, guitar
+    # Caption: "rock style completion"
+    ```
+    
+    **Available Tracks:**
+    
+    vocals, backing_vocals, drums, bass, guitar, keyboard, percussion, strings, synth, fx, brass, woodwinds
+  </Tab>
+</Tabs>
+
+## Advanced Usage
+
+### Batch Processing with Config Files
+
+Create multiple config files for different songs and process them in batch:
+
+```bash Batch Script
+#!/bin/bash
+
+for config in configs/*.toml; do
+  echo "Processing $config"
+  python cli.py --config "$config"
+done
+```
+
+### Custom Timesteps
+
+Specify custom timestep schedule in config:
+
+```toml
+[dit_settings]
+timesteps = [0.97, 0.76, 0.615, 0.5, 0.395, 0.28, 0.18, 0.085, 0]
+```
+
+### Multiple Seeds
+
+Generate multiple variations with specific seeds:
+
+```toml
+[generation]
+batch_size = 4
+seeds = [42, 123, 456, 789]
+use_random_seed = false
+```
+
+### Environment Variables
+
+Override settings via environment variables:
+
+```bash
+export ACE_STEP_SUPPRESS_AUDIO_TOKENS=0  # Show audio tokens in logs
+export ACESTEP_API_KEY=your-key           # API key for server mode
+
+python cli.py --config config.toml
+```
+
+## Tips and Best Practices
+
+<Card title="Automation Tips" icon="robot">
+  - **Save configs** for reproducible results
+  - **Use meaningful filenames** (e.g., `upbeat_edm_128bpm.toml`)
+  - **Set specific seeds** for consistent outputs
+  - **Version control configs** with your project
+</Card>
+
+<Card title="Interactive Editing" icon="pen-to-square">
+  - Use `instruction.txt` editing when `thinking=true`
+  - Fine-tune LM prompts for better control
+  - Experiment with metadata variations
+</Card>
+
+<Card title="Performance" icon="gauge-high">
+  - Use turbo models for faster generation
+  - Set `inference_steps=8` for speed
+  - Reduce `batch_size` if memory is limited
+  - Enable `compile=true` for optimized inference
+</Card>
+
+## Troubleshooting
+
+<Tabs>
+  <Tab title="Config Issues">
+    **Problem:** Config file not loading
+    
+    **Solutions:**
+    - Verify `.toml` syntax is valid
+    - Check file path is correct
+    - Ensure all required fields are present
+    - Review error messages for specific issues
+  </Tab>
+  
+  <Tab title="Model Issues">
+    **Problem:** Model not found
+    
+    **Solutions:**
+    - Let wizard auto-download models
+    - Check model name matches available models
+    - Verify model directory structure
+    - Ensure sufficient disk space for downloads
+  </Tab>
+  
+  <Tab title="Audio Path Issues">
+    **Problem:** Source audio file not found
+    
+    **Solutions:**
+    - Use absolute paths in configs
+    - Verify file exists and is readable
+    - Check file format is supported (wav, mp3, flac, ogg, opus)
+    - Ensure proper file permissions
+  </Tab>
+  
+  <Tab title="Prompt Editing">
+    **Problem:** `instruction.txt` not working
+    
+    **Solutions:**
+    - Ensure `thinking=true` is set
+    - Place `instruction.txt` in project root
+    - Check file encoding is UTF-8
+    - Verify format matches expected structure
+  </Tab>
+</Tabs>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Python API" icon="code" href="/usage/python-api">
+    Programmatic access for advanced integration
+  </Card>
+  <Card title="REST API" icon="server" href="/usage/rest-api">
+    HTTP-based API for remote access
+  </Card>
+  <Card title="Gradio UI" icon="grid-2" href="/usage/gradio-ui">
+    Web-based interface for interactive use
+  </Card>
+  <Card title="Examples" icon="book" href="/quickstart#quick-examples-by-task-type">
+    Example configs and use cases
+  </Card>
+</CardGroup>

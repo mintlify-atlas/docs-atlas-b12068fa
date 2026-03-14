@@ -1,0 +1,380 @@
+---
+title: 'GenerationParams'
+description: 'Complete reference for music generation parameters in ACE-Step 1.5'
+---
+
+## Overview
+
+`GenerationParams` is a dataclass that contains all parameters for music generation. It provides fine-grained control over text inputs, metadata, generation quality, and advanced features.
+
+```python
+from acestep.inference import GenerationParams
+
+params = GenerationParams(
+    caption="upbeat electronic dance music",
+    bpm=128,
+    duration=30,
+    inference_steps=8,
+    seed=42
+)
+```
+
+## Text Inputs
+
+<ParamField path="caption" type="str" default='""'>
+  Text description of desired music (main prompt). Maximum 512 characters.
+  
+  Can be simple ("relaxing piano music") or detailed with genre, mood, instruments.
+  
+  **Examples:**
+  - `"upbeat electronic dance music with heavy bass"`
+  - `"melancholic indie folk with acoustic guitar"`
+  - `"jazz trio with piano, upright bass, and drums"`
+</ParamField>
+
+<ParamField path="lyrics" type="str" default='""'>
+  Lyrics text for vocal music. Maximum 4096 characters.
+  
+  Use `"[Instrumental]"` for instrumental tracks. Supports multiple languages and structured sections:
+  
+  ```
+  [Verse 1]
+  Walking down the street today
+  Thinking of the words you used to say
+  
+  [Chorus]
+  I'm moving on, I'm staying strong
+  ```
+</ParamField>
+
+<ParamField path="instrumental" type="bool" default="False">
+  If True, generate instrumental music regardless of lyrics content.
+</ParamField>
+
+## Music Metadata
+
+<ParamField path="bpm" type="Optional[int]" default="None">
+  Beats per minute (30-300). `None` enables auto-detection via LM.
+  
+  **Typical values:**
+  - Ballads: 60-80
+  - Pop/Rock: 100-140
+  - Dance/EDM: 120-140
+  - Fast electronic: 140-180
+</ParamField>
+
+<ParamField path="keyscale" type="str" default='""'>
+  Musical key (e.g., "C Major", "Am", "F# minor"). Empty string enables auto-detection.
+  
+  **Format:** Note (A-G) + optional accidental (#/b/♯/♭) + mode (major/minor)
+  
+  **Examples:** `"C Major"`, `"F# minor"`, `"Bb major"`
+</ParamField>
+
+<ParamField path="timesignature" type="str" default='""'>
+  Time signature as a number: `"2"` for 2/4, `"3"` for 3/4, `"4"` for 4/4, `"6"` for 6/8.
+  
+  Empty string enables auto-detection.
+</ParamField>
+
+<ParamField path="vocal_language" type="str" default='"unknown"'>
+  Language code for vocals (ISO 639-1). Use `"unknown"` for auto-detection.
+  
+  **Supported languages:** ar, bn, de, en, es, fr, hi, it, ja, ko, pt, ru, zh, and 35+ others.
+  
+  See `acestep.constants.VALID_LANGUAGES` for complete list.
+</ParamField>
+
+<ParamField path="duration" type="float" default="-1.0">
+  Target audio length in seconds (10-600). If ≤ 0 or None, model chooses automatically based on lyrics length.
+  
+  **Recommendations:**
+  - Instrumental: 30-180 seconds
+  - With lyrics: Use auto-detection (-1)
+  - Short clips: 10-20 seconds minimum
+  - Long form: Up to 600 seconds maximum
+</ParamField>
+
+## Generation Parameters
+
+<ParamField path="inference_steps" type="int" default="8">
+  Number of diffusion denoising steps.
+  
+  **Turbo model:** 1-20 (recommended 8)
+  **Base model:** 1-200 (recommended 32-64)
+  
+  Higher = better quality but slower.
+</ParamField>
+
+<ParamField path="guidance_scale" type="float" default="7.0">
+  Classifier-free guidance scale (1.0-15.0). Higher increases adherence to text prompt.
+  
+  **Only supported for non-turbo models.**
+  
+  Typical range: 5.0-9.0
+</ParamField>
+
+<ParamField path="seed" type="int" default="-1">
+  Random seed for reproducibility.
+  
+  - `-1`: Random seed (different results each time)
+  - Any positive integer: Fixed seed (reproducible results)
+</ParamField>
+
+## Advanced DiT Parameters
+
+<ParamField path="use_adg" type="bool" default="False">
+  Use Adaptive Dual Guidance (base model only). Improves quality at cost of speed.
+</ParamField>
+
+<ParamField path="cfg_interval_start" type="float" default="0.0">
+  CFG application start ratio (0.0-1.0). Controls when to start applying classifier-free guidance.
+</ParamField>
+
+<ParamField path="cfg_interval_end" type="float" default="1.0">
+  CFG application end ratio (0.0-1.0). Controls when to stop applying classifier-free guidance.
+</ParamField>
+
+<ParamField path="shift" type="float" default="1.0">
+  Timestep shift factor (1.0-5.0).
+  
+  When ≠ 1.0, applies formula: `t = shift * t / (1 + (shift - 1) * t)`
+  
+  **Recommended:** 3.0 for turbo models.
+</ParamField>
+
+<ParamField path="infer_method" type="str" default='"ode"'>
+  Diffusion inference method:
+  
+  - `"ode"`: Euler method (faster, deterministic)
+  - `"sde"`: Stochastic differential equation (may produce variance)
+</ParamField>
+
+<ParamField path="timesteps" type="Optional[List[float]]" default="None">
+  Custom timesteps as list of floats from 1.0 to 0.0.
+  
+  If provided, overrides `inference_steps` and `shift`.
+  
+  **Example:** `[0.97, 0.76, 0.615, 0.5, 0.395, 0.28, 0.18, 0.085, 0]`
+</ParamField>
+
+## Audio Post-Processing
+
+<ParamField path="enable_normalization" type="bool" default="True">
+  Whether to apply loudness normalization to output audio.
+</ParamField>
+
+<ParamField path="normalization_db" type="float" default="-1.0">
+  Target loudness in dB for normalization (e.g., -1.0 for -1 dBFS peak).
+</ParamField>
+
+<ParamField path="fade_in_duration" type="float" default="0.0">
+  Fade-in duration in seconds. 0 = no fade-in.
+</ParamField>
+
+<ParamField path="fade_out_duration" type="float" default="0.0">
+  Fade-out duration in seconds. 0 = no fade-out.
+</ParamField>
+
+<ParamField path="latent_shift" type="float" default="0.0">
+  Additive shift applied to DiT latents before VAE decode. Default 0 = no shift.
+</ParamField>
+
+<ParamField path="latent_rescale" type="float" default="1.0">
+  Multiplicative rescale applied to DiT latents before VAE decode. Default 1.0 = no rescale.
+</ParamField>
+
+## Task-Specific Parameters
+
+<ParamField path="task_type" type="str" default='"text2music"'>
+  Generation task type. See [Task Types](/api-reference/inference/task-types) for details.
+  
+  **Options:** `"text2music"`, `"cover"`, `"repaint"`, `"lego"`, `"extract"`, `"complete"`
+</ParamField>
+
+<ParamField path="instruction" type="str" default='"Fill the audio semantic mask based on the given conditions:"'>
+  Task-specific instruction prompt. Auto-generated if empty.
+</ParamField>
+
+<ParamField path="reference_audio" type="Optional[str]" default="None">
+  Path to reference audio file for style transfer or continuation tasks.
+</ParamField>
+
+<ParamField path="src_audio" type="Optional[str]" default="None">
+  Path to source audio file for audio-to-audio tasks (cover, repaint, etc.).
+</ParamField>
+
+<ParamField path="audio_codes" type="str" default='""'>
+  Pre-extracted 5Hz audio semantic codes as a string. Advanced use only.
+</ParamField>
+
+<ParamField path="repainting_start" type="float" default="0.0">
+  Repainting start time in seconds (for repaint/lego tasks).
+</ParamField>
+
+<ParamField path="repainting_end" type="float" default="-1">
+  Repainting end time in seconds. Use -1 for end of audio.
+</ParamField>
+
+<ParamField path="audio_cover_strength" type="float" default="1.0">
+  Strength of audio cover/codes influence (0.0-1.0).
+  
+  - `1.0`: Strong adherence to original
+  - `0.5`: Balanced transformation
+  - `0.2`: Loose interpretation (recommended for style transfer)
+</ParamField>
+
+## 5Hz Language Model Parameters
+
+<ParamField path="thinking" type="bool" default="True">
+  Enable 5Hz Language Model "Chain-of-Thought" reasoning for semantic metadata and audio codes.
+</ParamField>
+
+<ParamField path="lm_temperature" type="float" default="0.85">
+  LM sampling temperature (0.0-2.0).
+  
+  - Higher: More creative/diverse results
+  - Lower: More conservative/consistent results
+</ParamField>
+
+<ParamField path="lm_cfg_scale" type="float" default="2.0">
+  LM classifier-free guidance scale. Higher = stronger adherence to prompt.
+</ParamField>
+
+<ParamField path="lm_top_k" type="int" default="0">
+  LM top-k sampling. 0 disables top-k filtering.
+  
+  Typical values: 40-100
+</ParamField>
+
+<ParamField path="lm_top_p" type="float" default="0.9">
+  LM nucleus sampling (0.0-1.0). 1.0 disables nucleus sampling.
+  
+  Typical values: 0.9-0.95
+</ParamField>
+
+<ParamField path="lm_negative_prompt" type="str" default='"NO USER INPUT"'>
+  Negative prompt for LM guidance. Helps avoid unwanted characteristics.
+</ParamField>
+
+<ParamField path="use_cot_metas" type="bool" default="True">
+  Generate metadata using LM CoT reasoning (BPM, key, duration, etc.).
+</ParamField>
+
+<ParamField path="use_cot_caption" type="bool" default="True">
+  Refine user caption using LM CoT reasoning.
+</ParamField>
+
+<ParamField path="use_cot_language" type="bool" default="True">
+  Detect vocal language using LM CoT reasoning.
+</ParamField>
+
+<ParamField path="use_cot_lyrics" type="bool" default="False">
+  Reserved for future use - generate/refine lyrics using LM CoT.
+</ParamField>
+
+<ParamField path="use_constrained_decoding" type="bool" default="True">
+  Enable constrained decoding for structured LM output.
+</ParamField>
+
+## CoT Generated Values
+
+These fields are automatically populated by the LM when CoT reasoning is enabled:
+
+<ParamField path="cot_bpm" type="Optional[int]" default="None">
+  LM-generated BPM value.
+</ParamField>
+
+<ParamField path="cot_keyscale" type="str" default='""'>
+  LM-generated key/scale.
+</ParamField>
+
+<ParamField path="cot_timesignature" type="str" default='""'>
+  LM-generated time signature.
+</ParamField>
+
+<ParamField path="cot_duration" type="Optional[float]" default="None">
+  LM-generated duration.
+</ParamField>
+
+<ParamField path="cot_vocal_language" type="str" default='"unknown"'>
+  LM-detected vocal language.
+</ParamField>
+
+<ParamField path="cot_caption" type="str" default='""'>
+  LM-refined caption.
+</ParamField>
+
+<ParamField path="cot_lyrics" type="str" default='""'>
+  LM-generated/refined lyrics.
+</ParamField>
+
+## Examples
+
+### Basic Text-to-Music
+
+```python
+params = GenerationParams(
+    caption="calm ambient music with soft piano and strings",
+    duration=60,
+    bpm=80,
+    keyscale="C Major"
+)
+```
+
+### Song with Lyrics
+
+```python
+params = GenerationParams(
+    caption="pop ballad with emotional vocals",
+    lyrics="""[Verse 1]
+    Walking down the street today
+    Thinking of the words you used to say
+    
+    [Chorus]
+    I'm moving on, I'm staying strong
+    """,
+    vocal_language="en",
+    bpm=72,
+    duration=45
+)
+```
+
+### High-Quality Generation
+
+```python
+params = GenerationParams(
+    caption="intricate jazz fusion with complex harmonies",
+    inference_steps=64,
+    guidance_scale=8.0,
+    use_adg=True,
+    shift=3.0,
+    seed=42
+)
+```
+
+### Custom Timesteps
+
+```python
+params = GenerationParams(
+    caption="upbeat electronic dance music",
+    timesteps=[0.97, 0.76, 0.615, 0.5, 0.395, 0.28, 0.18, 0.085, 0]
+)
+```
+
+### Style Cover
+
+```python
+params = GenerationParams(
+    task_type="cover",
+    src_audio="original_song.mp3",
+    caption="orchestral symphonic arrangement",
+    audio_cover_strength=0.7
+)
+```
+
+## See Also
+
+- [Generation Config](/api-reference/inference/generation-config) - Batch and output configuration
+- [Task Types](/api-reference/inference/task-types) - Complete guide to all task types
+- [Overview](/api-reference/inference/overview) - API introduction and quick start

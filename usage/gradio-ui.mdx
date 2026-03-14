@@ -1,0 +1,557 @@
+---
+title: 'Gradio Web UI'
+description: 'Complete guide to using the ACE-Step Gradio web interface for music generation'
+icon: 'grid-2'
+---
+
+The Gradio Web UI is the primary interface for ACE-Step, providing an intuitive browser-based environment for music generation, LoRA training, and advanced settings.
+
+## Launching the Demo
+
+<CodeGroup>
+```bash Basic Launch
+python app.py
+```
+
+```bash With Pre-initialization
+python app.py --config acestep-v15-turbo --init-llm
+```
+
+```bash Custom Port
+python app.py --port 7860
+```
+</CodeGroup>
+
+## Interface Overview
+
+The Gradio interface consists of three main sections:
+
+<Steps>
+  <Step title="Settings Panel">
+    Collapsed accordion containing service configuration, DiT/LM parameters, and output options
+  </Step>
+  <Step title="Generation Tab">
+    Main workspace with generation mode selector and input controls
+  </Step>
+  <Step title="Results Section">
+    Audio playback, scoring, and batch navigation
+  </Step>
+  <Step title="Training Tab">
+    Dataset builder and LoRA training tools
+  </Step>
+</Steps>
+
+## Service Configuration
+
+### Model Selection
+
+| Setting | Description |
+|---------|-------------|
+| **Checkpoint File** | Select a trained model checkpoint (if available) |
+| **Main Model Path** | Choose the DiT model configuration (e.g., `acestep-v15-turbo`) |
+| **Device** | Processing device: `auto` (recommended), `cuda`, or `cpu` |
+
+### 5Hz LM Configuration
+
+<Note>
+Available models are **automatically filtered by your GPU tier**. For example, 6-8GB GPUs only show the 0.6B model, while 24GB+ GPUs show all sizes (0.6B, 1.7B, 4B).
+</Note>
+
+| Setting | Description |
+|---------|-------------|
+| **5Hz LM Model Path** | Select the language model (filtered by GPU tier) |
+| **5Hz LM Backend** | `vllm` (faster, for NVIDIA ≥8GB), `pt` (universal), or `mlx` (Apple Silicon) |
+| **Initialize 5Hz LM** | Load LM during initialization (required for thinking mode) |
+
+<Warning>
+On GPUs ≤6GB (Tier 1-2), LM initialization is automatically disabled and the backend is restricted to `pt`/`mlx`.
+</Warning>
+
+### Performance Options
+
+| Setting | Default | Description |
+|---------|---------|-------------|
+| **Use Flash Attention** | Auto | Enable for faster inference (requires flash_attn) |
+| **Offload to CPU** | Auto | Offload models to CPU when idle (auto-enabled less than 20GB) |
+| **Offload DiT to CPU** | Auto | Specifically offload DiT model (auto-enabled less than 12GB) |
+| **INT8 Quantization** | Auto | Reduce VRAM footprint (auto-enabled less than 20GB) |
+| **Compile Model** | Enabled | Enable `torch.compile` for optimized inference |
+
+### LoRA Adapter
+
+<Warning>
+LoRA adapters cannot be loaded on quantized models due to compatibility issues between PEFT and TorchAO. Set **INT8 Quantization** to **None** before loading LoRA.
+</Warning>
+
+| Control | Description |
+|---------|-------------|
+| **LoRA Path** | Path to trained LoRA adapter directory |
+| **Load LoRA** | Load the specified LoRA adapter |
+| **Unload** | Remove the currently loaded LoRA |
+| **Use LoRA** | Enable/disable the loaded LoRA for inference |
+
+### Initialization
+
+Click **Initialize Service** to load the models. The status box displays:
+
+- Detected GPU tier and VRAM
+- Maximum allowed duration and batch size
+- Warnings about automatically corrected settings
+
+After initialization, **Audio Duration** and **Batch Size** sliders update to reflect tier limits.
+
+## Generation Modes
+
+<Tabs>
+  <Tab title="Simple Mode">
+    ### Simple Mode
+    
+    Designed for quick, natural language-based music generation.
+    
+    **Workflow:**
+    
+    <Steps>
+      <Step title="Enter Description">
+        Write a natural language description in the "Song Description" field
+        
+        **Examples:**
+        - "a soft Bengali love song for a quiet evening"
+        - "upbeat electronic dance music with heavy bass drops"
+        - "melancholic indie folk with acoustic guitar"
+      </Step>
+      <Step title="Optional Settings">
+        - Check "Instrumental" for no vocals
+        - Select preferred vocal language
+      </Step>
+      <Step title="Create Sample">
+        Click **Create Sample** to auto-generate caption, lyrics, and metadata
+      </Step>
+      <Step title="Generate">
+        Review the generated content and click **Generate Music**
+      </Step>
+    </Steps>
+    
+    <Note>
+    Click the 🎲 button to load a random example description.
+    </Note>
+  </Tab>
+  
+  <Tab title="Custom Mode">
+    ### Custom Mode
+    
+    Full control over all generation parameters (text2music).
+    
+    **Workflow:**
+    
+    <Steps>
+      <Step title="Input Caption & Lyrics">
+        Manually fill in the Caption and Lyrics fields
+      </Step>
+      <Step title="Reference Audio (Optional)">
+        Upload reference audio for style guidance
+      </Step>
+      <Step title="Metadata (Optional)">
+        Set BPM, Key, Duration, Time Signature, etc.
+      </Step>
+      <Step title="Format (Optional)">
+        Click **Format** to enhance input using the LM
+      </Step>
+      <Step title="Generate">
+        Click **Generate Music** to create audio
+      </Step>
+    </Steps>
+  </Tab>
+  
+  <Tab title="Remix Mode">
+    ### Remix Mode
+    
+    Transform existing audio while maintaining melodic structure but changing style.
+    
+    **Workflow:**
+    
+    <Steps>
+      <Step title="Upload Source">
+        Upload source audio (the song to remix)
+      </Step>
+      <Step title="Describe Target Style">
+        Write a caption describing the desired style
+      </Step>
+      <Step title="Adjust Strength">
+        Set **Remix Strength** (0.0-1.0): higher = closer to original
+      </Step>
+      <Step title="Generate">
+        Click **Generate Music**
+      </Step>
+    </Steps>
+    
+    **Use Cases:** Cover versions, style transfer, song variants
+  </Tab>
+  
+  <Tab title="Repaint Mode">
+    ### Repaint Mode
+    
+    Regenerate a specific time segment while keeping the rest intact.
+    
+    **Workflow:**
+    
+    <Steps>
+      <Step title="Upload Source">
+        Upload source audio
+      </Step>
+      <Step title="Set Time Range">
+        Set **Repainting Start** and **Repainting End** (seconds; -1 for end)
+      </Step>
+      <Step title="Describe Section">
+        Write caption for the repainted section
+      </Step>
+      <Step title="Generate">
+        Click **Generate Music**
+      </Step>
+    </Steps>
+    
+    **Use Cases:** Fixing sections, changing lyrics in segments, extending songs
+  </Tab>
+  
+  <Tab title="Extract/Lego/Complete">
+    ### Advanced Modes (Base Model Only)
+    
+    <Note>
+    These modes require the base model, not the turbo variant.
+    </Note>
+    
+    **Extract Mode** - Isolate specific instrument tracks
+    
+    <Steps>
+      <Step title="Upload Source">
+        Upload mixed audio
+      </Step>
+      <Step title="Select Track">
+        Choose track to extract (vocals, drums, bass, guitar, etc.)
+      </Step>
+      <Step title="Generate">
+        Click **Generate Music**
+      </Step>
+    </Steps>
+    
+    **Lego Mode** - Add new instrument tracks
+    
+    <Steps>
+      <Step title="Upload Source">
+        Upload existing audio
+      </Step>
+      <Step title="Select Track">
+        Choose track to add
+      </Step>
+      <Step title="Describe Track">
+        Write caption for track characteristics
+      </Step>
+      <Step title="Generate">
+        Click **Generate Music**
+      </Step>
+    </Steps>
+    
+    **Complete Mode** - Auto-arrange with specified instruments
+    
+    <Steps>
+      <Step title="Upload Source">
+        Upload partial track
+      </Step>
+      <Step title="Select Multiple Tracks">
+        Choose tracks to add
+      </Step>
+      <Step title="Describe Style">
+        Write caption for desired style
+      </Step>
+      <Step title="Generate">
+        Click **Generate Music**
+      </Step>
+    </Steps>
+    
+    **Available Tracks:**
+    
+    vocals, backing_vocals, drums, bass, guitar, keyboard, percussion, strings, synth, fx, brass, woodwinds
+  </Tab>
+</Tabs>
+
+## Input Parameters
+
+### Music Caption
+
+The text description of desired music. Be specific about:
+
+- Genre and style
+- Instruments
+- Mood and atmosphere
+- Tempo feel (if not specifying BPM)
+
+**Example:** "upbeat pop rock with electric guitars, driving drums, and catchy synth hooks"
+
+<Note>
+Click 🎲 to load a random example caption.
+</Note>
+
+### Lyrics
+
+Enter lyrics with structure tags:
+
+```text
+[Verse 1]
+Walking down the street today
+Thinking of the words you used to say
+
+[Chorus]
+I'm moving on, I'm staying strong
+This is where I belong
+
+[Verse 2]
+...
+```
+
+**Instrumental checkbox:** Generate instrumental music regardless of lyrics content.
+
+**Vocal Language:** Select language for vocals or use "unknown" for auto-detection.
+
+**Format button:** Enhance caption and lyrics using the 5Hz LM.
+
+### Optional Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| **BPM** | Auto | Tempo in beats per minute (30-300) |
+| **Key Scale** | Auto | Musical key (e.g., "C Major", "Am", "F# minor") |
+| **Time Signature** | Auto | 2 (2/4), 3 (3/4), 4 (4/4), 6 (6/8) |
+| **Audio Duration** | Auto/-1 | Target length in seconds (10-600) |
+| **Batch Size** | 2 | Number of variations to generate (1-8) |
+
+## Advanced Settings
+
+### DiT Parameters
+
+<Tabs>
+  <Tab title="Basic">
+    | Parameter | Default | Description |
+    |-----------|---------|-------------|
+    | **Inference Steps** | 8 | Denoising steps (Turbo: 1-20, Base: 1-200) |
+    | **Guidance Scale** | 7.0 | CFG strength (base model only, 1.0-15.0) |
+    | **Seed** | -1 | Random seed for reproducibility |
+    | **Audio Format** | mp3 | Output format: mp3, flac |
+  </Tab>
+  
+  <Tab title="Advanced">
+    | Parameter | Default | Description |
+    |-----------|---------|-------------|
+    | **Shift** | 3.0 | Timestep shift factor (1.0-5.0, recommended 3.0 for turbo) |
+    | **Inference Method** | ode | ode (Euler, faster) or sde (stochastic) |
+    | **Custom Timesteps** | - | Override timesteps (e.g., "0.97,0.76,0.615,...") |
+  </Tab>
+  
+  <Tab title="Base Model Only">
+    | Parameter | Default | Description |
+    |-----------|---------|-------------|
+    | **Use ADG** | ✗ | Enable Adaptive Dual Guidance for better quality |
+    | **CFG Interval Start** | 0.0 | When to start applying CFG (0.0-1.0) |
+    | **CFG Interval End** | 1.0 | When to stop applying CFG (0.0-1.0) |
+  </Tab>
+</Tabs>
+
+### LM Parameters
+
+| Parameter | Default | Description |
+|-----------|---------|-------------|
+| **LM Temperature** | 0.85 | Sampling temperature (0.0-2.0, higher = more creative) |
+| **LM CFG Scale** | 2.0 | LM guidance strength (1.0-3.0) |
+| **LM Top-K** | 0 | Top-K sampling (0 disables) |
+| **LM Top-P** | 0.9 | Nucleus sampling (0.0-1.0) |
+| **LM Negative Prompt** | "NO USER INPUT" | Negative prompt for CFG |
+
+### Generation Controls
+
+| Control | Description |
+|---------|-------------|
+| **Think** | Enable 5Hz LM for code generation and metadata |
+| **ParallelThinking** | Enable parallel LM batch processing |
+| **CaptionRewrite** | Let LM enhance the input caption |
+| **AutoGen** | Automatically start next batch after completion |
+
+## Results Section
+
+### Generated Audio
+
+Up to 8 audio samples are displayed based on batch size. Each includes:
+
+- **Audio Player** - Play, pause, download
+- **Send To Src** - Use this audio as source for further processing
+- **Save** - Save audio and metadata to JSON
+- **Score** - Calculate perplexity-based quality score
+- **LRC** - Generate lyrics timestamps
+
+### Details
+
+Click "Score & LRC & LM Codes" to view:
+
+- **LM Codes** - 5Hz semantic codes for this sample
+- **Quality Score** - Perplexity-based quality metric
+- **Lyrics Timestamps** - LRC format timing data
+
+### Batch Navigation
+
+| Control | Description |
+|---------|-------------|
+| **◀ Previous** | View previous batch |
+| **Batch Indicator** | Shows position (e.g., "Batch 1 / 3") |
+| **Next Batch Status** | Background generation progress |
+| **Next ▶** | View next batch (triggers generation if AutoGen is on) |
+
+### Restore Parameters
+
+Click **Apply These Settings to UI** to restore all generation parameters from the current batch. Useful for iterating on successful results.
+
+## LoRA Training
+
+<Note>
+For a comprehensive step-by-step walkthrough, see the [LoRA Training Tutorial](/training/lora-training).
+</Note>
+
+### Dataset Builder
+
+<Steps>
+  <Step title="Load or Scan">
+    **Option A:** Load existing dataset JSON
+    
+    **Option B:** Scan new directory for audio files
+  </Step>
+  
+  <Step title="Configure Dataset">
+    - Set dataset name
+    - Mark if all tracks are instrumental
+    - Define custom activation tag
+    - Choose tag position
+  </Step>
+  
+  <Step title="Auto-Label">
+    Click **Auto-Label All** to generate metadata (caption, BPM, key, time signature)
+  </Step>
+  
+  <Step title="Preview & Edit">
+    Use slider to review samples and manually edit metadata
+  </Step>
+  
+  <Step title="Save Dataset">
+    Export as JSON
+  </Step>
+  
+  <Step title="Preprocess">
+    Convert dataset to pre-computed tensors for fast training
+  </Step>
+</Steps>
+
+### Train LoRA
+
+<Steps>
+  <Step title="Load Dataset">
+    Select preprocessed tensors directory
+  </Step>
+  
+  <Step title="Configure LoRA">
+    - **LoRA Rank (r)**: 64 (capacity)
+    - **LoRA Alpha**: 128 (scaling factor, typically 2x rank)
+    - **LoRA Dropout**: 0.1 (regularization)
+  </Step>
+  
+  <Step title="Set Training Parameters">
+    - Learning Rate: 1e-4
+    - Max Epochs: 500
+    - Batch Size: 1
+    - Gradient Accumulation: 1
+    - Save Every N Epochs: 200
+  </Step>
+  
+  <Step title="Start Training">
+    Monitor training progress and loss curve
+  </Step>
+  
+  <Step title="Export">
+    Export the final LoRA adapter after training
+  </Step>
+</Steps>
+
+<Warning>
+On Windows or systems with limited VRAM, enable **Offload to CPU** and use tiled encoding during preprocessing to reduce memory usage.
+</Warning>
+
+## Tips and Best Practices
+
+### For Best Quality
+
+<Card title="Quality Tips" icon="sparkles">
+  - Keep "Think" checkbox enabled for LM-enhanced generation
+  - Be specific in captions (genre, instruments, mood, style)
+  - Let LM detect metadata (leave BPM/Key/Duration empty)
+  - Generate 2-4 variations and pick the best
+</Card>
+
+### For Faster Generation
+
+<Card title="Speed Tips" icon="bolt">
+  - Use turbo model (`acestep-v15-turbo`)
+  - Keep inference steps at 8 (default)
+  - Reduce batch size for quick results
+  - Disable AutoGen for manual control
+</Card>
+
+### For Consistent Results
+
+<Card title="Consistency Tips" icon="lock">
+  - Set a specific seed (uncheck "Random Seed")
+  - Use "Save" to export parameters for reproduction
+  - Use "Apply These Settings" to restore from good batches
+</Card>
+
+## Troubleshooting
+
+<Tabs>
+  <Tab title="No Audio Generated">
+    - Check that model is initialized (green status message)
+    - Ensure 5Hz LM is initialized if using thinking mode
+    - Review status output for error messages
+  </Tab>
+  
+  <Tab title="Poor Quality">
+    - Increase inference steps (for base model)
+    - Adjust guidance scale
+    - Try different seeds
+    - Make caption more specific
+  </Tab>
+  
+  <Tab title="Out of Memory">
+    The system includes automatic VRAM management. If OOM still occurs:
+    - Reduce batch size manually
+    - Enable CPU offloading (should be auto-enabled for GPUs less than 20GB)
+    - Enable INT8 quantization (should be auto-enabled for GPUs less than 20GB)
+    - Reduce LM batch chunk size
+    - See GPU Compatibility guide for recommended settings per tier
+  </Tab>
+  
+  <Tab title="LM Not Working">
+    - Ensure "Initialize 5Hz LM" was checked during initialization
+    - Check that valid LM model path is selected (tier-compatible models only)
+    - Verify vllm or PyTorch backend is available
+    - If LM checkbox is grayed out, your GPU tier doesn't support LM
+  </Tab>
+</Tabs>
+
+## Keyboard Shortcuts
+
+- **Tab** - Move between input fields
+- **Enter** - Submit text inputs
+- **Space** - Toggle checkboxes
+
+## Language Support
+
+The interface supports multiple UI languages:
+
+- **English** (en)
+- **Chinese** (zh)
+- **Japanese** (ja)
+
+Select your preferred language in the Service Configuration section.

@@ -1,97 +1,166 @@
 ---
-title: "Introduction"
-description: "Welcome to the new home for your documentation"
+title: "ACE-Step 1.5"
+description: "The most powerful local music generation model that outperforms most commercial alternatives"
 ---
 
-## Setting up
+<div className="bg-black text-white py-16 px-8 rounded-lg mb-8">
+  <h1 className="text-5xl font-bold mb-4" style={{fontFamily: 'Inter'}}>
+    ACE-Step 1.5
+  </h1>
+  <p className="text-xl mb-8" style={{fontFamily: 'Inter'}}>
+    Pushing the Boundaries of Open-Source Music Generation
+  </p>
+  <div className="flex gap-4">
+    <a 
+      href="/quickstart" 
+      className="px-6 py-3 rounded-lg font-semibold"
+      style={{backgroundColor: '#2e37f7', color: '#ffffff'}}
+    >
+      Get Started
+    </a>
+    <a 
+      href="https://github.com/ace-step/ACE-Step-1.5" 
+      className="px-6 py-3 rounded-lg font-semibold border border-white"
+      style={{backgroundColor: 'transparent', color: '#ffffff'}}
+    >
+      View on GitHub
+    </a>
+  </div>
+</div>
 
-Get your documentation site up and running in minutes.
+## Overview
 
-<Card
-  title="Start here"
-  icon="rocket"
-  href="/quickstart"
-  horizontal
->
-  Follow our three step quickstart guide.
+ACE-Step 1.5 is a highly efficient open-source music foundation model that brings commercial-grade generation to consumer hardware. On commonly used evaluation metrics, ACE-Step 1.5 achieves quality beyond most commercial music models while remaining extremely fast—under 2 seconds per full song on an A100 and under 10 seconds on an RTX 3090.
+
+The model runs locally with less than 4GB of VRAM and supports lightweight personalization through LoRA training from just a few songs.
+
+<CardGroup cols={2}>
+  <Card title="Quick Start" icon="rocket" href="/quickstart">
+    Get up and running with ACE-Step in minutes
+  </Card>
+  <Card title="Installation Guide" icon="download" href="/installation">
+    Detailed installation instructions for all platforms
+  </Card>
+  <Card title="Model Architecture" icon="brain" href="/model/architecture">
+    Learn about the hybrid LM-DiT architecture
+  </Card>
+  <Card title="API Reference" icon="code" href="/api-reference/inference/overview">
+    Complete Python and REST API documentation
+  </Card>
+</CardGroup>
+
+## Key Features
+
+<CardGroup cols={2}>
+  <Card title="Ultra-Fast Generation" icon="bolt">
+    Under 2s per full song on A100, under 10s on RTX 3090
+  </Card>
+  <Card title="Commercial-Grade Quality" icon="star">
+    Quality beyond most commercial music models
+  </Card>
+  <Card title="50+ Languages" icon="globe">
+    Multi-language lyrics with structure and style control
+  </Card>
+  <Card title="LoRA Training" icon="sparkles">
+    Personalize with just a few songs in 1 hour on RTX 3090
+  </Card>
+  <Card title="Multi-Platform Support" icon="microchip">
+    CUDA, ROCm, MPS, Intel XPU, and CPU backends
+  </Card>
+  <Card title="Advanced Editing" icon="wand-magic-sparkles">
+    Cover generation, repainting, vocal2BGM, and more
+  </Card>
+  <Card title="Flexible Duration" icon="clock">
+    Generate music from 10 seconds to 10 minutes
+  </Card>
+  <Card title="REST API & Python SDK" icon="terminal">
+    Programmatic access for integration
+  </Card>
+</CardGroup>
+
+## Advanced Capabilities
+
+ACE-Step 1.5 unifies precise stylistic control with versatile editing capabilities:
+
+- **Reference Audio Input** — Use reference audio to guide generation style
+- **Cover Generation** — Create covers from existing audio
+- **Repaint & Edit** — Selective local audio editing and regeneration
+- **Track Separation** — Separate audio into individual stems
+- **Multi-Track Generation** — Add layers like Suno Studio's "Add Layer" feature
+- **Vocal2BGM** — Auto-generate accompaniment for vocal tracks
+- **Metadata Control** — Control duration, BPM, key/scale, time signature
+- **Audio Understanding** — Extract BPM, key/scale, time signature & caption from audio
+- **LRC Generation** — Auto-generate lyric timestamps for generated music
+
+## Usage Methods
+
+<CardGroup cols={2}>
+  <Card title="Gradio Web UI" icon="window" href="/usage/gradio-ui">
+    Interactive web interface for music generation
+  </Card>
+  <Card title="CLI Tool" icon="terminal" href="/usage/cli">
+    Interactive wizard and configuration
+  </Card>
+  <Card title="Python API" icon="code" href="/usage/python-api">
+    Programmatic access for integration
+  </Card>
+  <Card title="REST API" icon="globe" href="/usage/rest-api">
+    HTTP-based async API for services
+  </Card>
+</CardGroup>
+
+## Getting Started
+
+<Steps>
+  <Step title="Install uv package manager">
+    Install the uv package manager for Python dependency management:
+    
+    ```bash
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    ```
+  </Step>
+  
+  <Step title="Clone and install">
+    Clone the repository and install dependencies:
+    
+    ```bash
+    git clone https://github.com/ACE-Step/ACE-Step-1.5.git
+    cd ACE-Step-1.5
+    uv sync
+    ```
+  </Step>
+  
+  <Step title="Launch">
+    Launch the Gradio UI or API server:
+    
+    <CodeGroup>
+    ```bash Gradio UI
+    uv run acestep
+    ```
+    
+    ```bash API Server
+    uv run acestep-api
+    ```
+    </CodeGroup>
+    
+    Models auto-download on first run.
+  </Step>
+</Steps>
+
+<Card title="Continue to Quick Start" icon="arrow-right" href="/quickstart">
+  Follow the complete quick start guide for detailed instructions
 </Card>
 
-## Make it yours
+## Community & Support
 
-Design a docs site that looks great and empowers your users.
-
-<Columns cols={2}>
-  <Card
-    title="Edit locally"
-    icon="pen-to-square"
-    href="/development"
-  >
-    Edit your docs locally and preview them in real time.
+<CardGroup cols={3}>
+  <Card title="GitHub" icon="github" href="https://github.com/ace-step/ACE-Step-1.5">
+    View source code and contribute
   </Card>
-  <Card
-    title="Customize your site"
-    icon="palette"
-    href="/essentials/settings"
-  >
-    Customize the design and colors of your site to match your brand.
+  <Card title="Discord" icon="discord" href="https://discord.gg/PeWDxrkdj7">
+    Join the community chat
   </Card>
-    <Card
-    title="Set up navigation"
-    icon="map"
-    href="/essentials/navigation"
-  >
-    Organize your docs to help users find what they need and succeed with your product.
+  <Card title="Hugging Face" icon="face-smile" href="https://huggingface.co/ACE-Step/Ace-Step1.5">
+    Download models and demos
   </Card>
-  <Card
-    title="API documentation"
-    icon="terminal"
-    href="/api-reference/introduction"
-  >
-    Auto-generate API documentation from OpenAPI specifications.
-  </Card>
-</Columns>
-
-## Create beautiful pages
-
-Everything you need to create world-class documentation.
-
-<Columns cols={2}>
-  <Card
-    title="Write with MDX"
-    icon="pen-fancy"
-    href="/essentials/markdown"
-  >
-    Use MDX to style your docs pages.
-  </Card>
-  <Card
-    title="Code samples"
-    icon="code"
-    href="/essentials/code"
-  >
-    Add sample code to demonstrate how to use your product.
-  </Card>
-  <Card
-    title="Images"
-    icon="image"
-    href="/essentials/images"
-  >
-    Display images and other media.
-  </Card>
-  <Card
-    title="Reusable snippets"
-    icon="recycle"
-    href="/essentials/reusable-snippets"
-  >
-    Write once and reuse across your docs.
-  </Card>
-</Columns>
-
-## Need inspiration?
-
-<Card
-  title="See complete examples"
-  icon="stars"
-  href="https://mintlify.com/customers"
->
-  Browse our showcase of exceptional documentation sites.
-</Card>
+</CardGroup>

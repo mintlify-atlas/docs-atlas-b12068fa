@@ -1,0 +1,282 @@
+---
+title: Authentication
+description: Secure your ACE-Step API with API key authentication
+---
+
+The ACE-Step API supports optional API key authentication to secure your service. When enabled, clients must provide a valid API key in their requests.
+
+## Enabling Authentication
+
+Authentication is controlled by the `ACESTEP_API_KEY` environment variable. If not set, the API runs without authentication.
+
+### Set API Key via Environment Variable
+
+```bash
+export ACESTEP_API_KEY=your-secret-key-here
+```
+
+### Set API Key via Command Line
+
+```bash
+python -m acestep.api_server --api-key your-secret-key-here
+```
+
+<Warning>
+  **Production Deployment**: Always enable authentication in production environments. Use a strong, randomly generated key and store it securely.
+</Warning>
+
+## Authentication Methods
+
+The API supports two authentication methods. Choose the one that best fits your client implementation.
+
+### Method 1: Authorization Header (Recommended)
+
+Include the API key in the `Authorization` header using Bearer authentication:
+
+```bash
+curl -X POST http://localhost:8001/release_task \
+  -H 'Authorization: Bearer your-api-key' \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt": "upbeat pop song"}'
+```
+
+<ParamField header="Authorization" type="string" required>
+  Bearer token format: `Bearer your-api-key`
+</ParamField>
+
+**Python Example:**
+
+```python
+import requests
+
+headers = {
+    "Authorization": "Bearer your-api-key",
+    "Content-Type": "application/json"
+}
+
+response = requests.post(
+    "http://localhost:8001/release_task",
+    headers=headers,
+    json={"prompt": "upbeat pop song"}
+)
+```
+
+**JavaScript Example:**
+
+```javascript
+const response = await fetch('http://localhost:8001/release_task', {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer your-api-key',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({ prompt: 'upbeat pop song' })
+});
+```
+
+### Method 2: Request Body Token
+
+Include the API key in the request body as `ai_token`:
+
+```bash
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "ai_token": "your-api-key",
+    "prompt": "upbeat pop song",
+    "lyrics": "Hello world"
+  }'
+```
+
+<ParamField body="ai_token" type="string" required>
+  API key included in request body
+</ParamField>
+
+**Python Example:**
+
+```python
+import requests
+
+response = requests.post(
+    "http://localhost:8001/release_task",
+    json={
+        "ai_token": "your-api-key",
+        "prompt": "upbeat pop song",
+        "lyrics": "Hello world"
+    }
+)
+```
+
+## Authentication Behavior
+
+### When Authentication is Disabled
+
+If `ACESTEP_API_KEY` is not set or is empty:
+
+- All requests are accepted without authentication
+- No `Authorization` header or `ai_token` is required
+- Suitable for local development and testing
+
+### When Authentication is Enabled
+
+If `ACESTEP_API_KEY` is set:
+
+- Requests **must** include either `Authorization` header or `ai_token` in body
+- Invalid or missing credentials return HTTP 401 Unauthorized
+- Both methods are validated against the same server-side key
+
+## Authentication Errors
+
+### Missing Credentials
+
+**Request:**
+```bash
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt": "upbeat pop song"}'
+```
+
+**Response (401 Unauthorized):**
+```json
+{
+  "detail": "Missing ai_token or Authorization header"
+}
+```
+
+### Invalid API Key
+
+**Request:**
+```bash
+curl -X POST http://localhost:8001/release_task \
+  -H 'Authorization: Bearer wrong-key' \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt": "upbeat pop song"}'
+```
+
+**Response (401 Unauthorized):**
+```json
+{
+  "detail": "Invalid API key"
+}
+```
+
+### Invalid ai_token
+
+**Request:**
+```bash
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{"ai_token": "wrong-key", "prompt": "upbeat pop song"}'
+```
+
+**Response (401 Unauthorized):**
+```json
+{
+  "detail": "Invalid ai_token"
+}
+```
+
+## Endpoint-Specific Authentication
+
+### Endpoints Requiring Authentication (when enabled)
+
+All endpoints require authentication when `ACESTEP_API_KEY` is set:
+
+- `POST /release_task`
+- `POST /query_result`
+- `POST /format_input`
+- `POST /create_random_sample`
+- `GET /v1/models`
+- `GET /v1/stats`
+- `GET /v1/audio`
+- `POST /v1/init`
+
+### Public Endpoints
+
+- `GET /health` - Health check endpoint (no authentication required)
+
+<Note>
+  The `/health` endpoint is always accessible without authentication to support load balancer health checks and monitoring systems.
+</Note>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Strong Keys">
+    Generate cryptographically secure random keys:
+    
+    ```bash
+    # Generate a secure random key (Linux/macOS)
+    openssl rand -base64 32
+    
+    # Or using Python
+    python -c "import secrets; print(secrets.token_urlsafe(32))"
+    ```
+  </Accordion>
+
+  <Accordion title="Rotate Keys Regularly">
+    - Implement key rotation policies for production systems
+    - Update client applications before decommissioning old keys
+    - Monitor for failed authentication attempts
+  </Accordion>
+
+  <Accordion title="Secure Storage">
+    - Never commit API keys to version control
+    - Use environment variables or secure secret management systems
+    - Restrict file permissions on configuration files containing keys
+    
+    ```bash
+    # Secure .env file permissions
+    chmod 600 .env
+    ```
+  </Accordion>
+
+  <Accordion title="Use HTTPS in Production">
+    - Always deploy with HTTPS/TLS in production
+    - Use a reverse proxy (nginx, Caddy) to handle SSL termination
+    - Never transmit API keys over unencrypted HTTP connections
+  </Accordion>
+</AccordionGroup>
+
+## Multi-User Scenarios
+
+Currently, the API supports a single shared API key. For multi-user or multi-tenant scenarios:
+
+- Deploy separate API instances per user/tenant
+- Use a reverse proxy or API gateway for request routing and user-specific authentication
+- Implement custom middleware for advanced authentication schemes
+
+## Testing Authentication
+
+### Test with Authentication Enabled
+
+```bash
+# Start server with API key
+export ACESTEP_API_KEY=test-key-123
+python -m acestep.api_server
+
+# Valid request
+curl -X POST http://localhost:8001/release_task \
+  -H 'Authorization: Bearer test-key-123' \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt": "test"}'
+
+# Invalid request (should return 401)
+curl -X POST http://localhost:8001/release_task \
+  -H 'Authorization: Bearer wrong-key' \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt": "test"}'
+```
+
+### Test with Authentication Disabled
+
+```bash
+# Start server without API key
+unset ACESTEP_API_KEY
+python -m acestep.api_server
+
+# Request without authentication (should succeed)
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{"prompt": "test"}'
+```

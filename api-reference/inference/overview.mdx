@@ -1,0 +1,353 @@
+---
+title: 'Inference Overview'
+description: 'Complete guide to the ACE-Step 1.5 Python inference API for music generation'
+---
+
+## Introduction
+
+The ACE-Step 1.5 inference API provides a comprehensive Python interface for music generation using diffusion transformers (DiT) and language models (LM). The API supports multiple generation modes including text-to-music, style transfer, audio editing, and multi-track composition.
+
+## Core Components
+
+The inference API consists of three main components:
+
+### 1. Handlers
+
+**AceStepHandler** (`acestep.handler`)
+
+Manages the DiT model for music generation:
+
+```python
+from acestep.handler import AceStepHandler
+
+dit_handler = AceStepHandler()
+dit_handler.initialize_service(
+    project_root="/path/to/project",
+    config_path="acestep-v15-turbo",
+    device="cuda"
+)
+```
+
+**LLMHandler** (`acestep.llm_inference`)
+
+Manages the 5Hz language model for metadata and audio code generation:
+
+```python
+from acestep.llm_inference import LLMHandler
+
+llm_handler = LLMHandler()
+llm_handler.initialize(
+    checkpoint_dir="/path/to/checkpoints",
+    lm_model_path="acestep-5Hz-lm-0.6B",
+    backend="vllm",
+    device="cuda"
+)
+```
+
+### 2. Configuration Objects
+
+**GenerationParams** - Music generation parameters:
+- Text inputs (caption, lyrics)
+- Music metadata (BPM, key, duration)
+- Generation settings (steps, guidance)
+- Task-specific parameters
+- LM chain-of-thought settings
+
+**GenerationConfig** - Batch and output configuration:
+- Batch size and seed management
+- Audio format settings
+- LM processing options
+
+See [Generation Parameters](/api-reference/inference/generation-params) and [Generation Config](/api-reference/inference/generation-config) for detailed documentation.
+
+### 3. Main Functions
+
+<CodeGroup>
+```python generate_music
+from acestep.inference import generate_music, GenerationParams, GenerationConfig
+
+params = GenerationParams(
+    caption="upbeat electronic dance music",
+    bpm=128,
+    duration=30
+)
+
+config = GenerationConfig(
+    batch_size=2,
+    audio_format="flac"
+)
+
+result = generate_music(
+    dit_handler,
+    llm_handler,
+    params,
+    config,
+    save_dir="/output"
+)
+```
+
+```python understand_music
+from acestep.inference import understand_music
+
+result = understand_music(
+    llm_handler,
+    audio_codes="<|audio_code_123|>...",
+    temperature=0.85
+)
+
+print(f"Caption: {result.caption}")
+print(f"BPM: {result.bpm}")
+```
+
+```python create_sample
+from acestep.inference import create_sample
+
+result = create_sample(
+    llm_handler,
+    query="a soft Bengali love song",
+    vocal_language="bn"
+)
+
+print(f"Caption: {result.caption}")
+print(f"Lyrics: {result.lyrics}")
+```
+
+```python format_sample
+from acestep.inference import format_sample
+
+result = format_sample(
+    llm_handler,
+    caption="Latin pop",
+    lyrics="[Verse]\nBailando..."
+)
+
+print(f"Enhanced: {result.caption}")
+print(f"BPM: {result.bpm}")
+```
+</CodeGroup>
+
+## Quick Start Example
+
+```python
+from acestep.handler import AceStepHandler
+from acestep.llm_inference import LLMHandler
+from acestep.inference import GenerationParams, GenerationConfig, generate_music
+
+# Initialize handlers
+dit_handler = AceStepHandler()
+llm_handler = LLMHandler()
+
+dit_handler.initialize_service(
+    project_root="/path/to/project",
+    config_path="acestep-v15-turbo",
+    device="cuda"
+)
+
+llm_handler.initialize(
+    checkpoint_dir="/path/to/checkpoints",
+    lm_model_path="acestep-5Hz-lm-0.6B",
+    backend="vllm",
+    device="cuda"
+)
+
+# Configure generation
+params = GenerationParams(
+    caption="calm ambient music with soft piano",
+    bpm=80,
+    duration=60,
+    keyscale="C Major"
+)
+
+config = GenerationConfig(
+    batch_size=2,
+    audio_format="flac"
+)
+
+# Generate music
+result = generate_music(
+    dit_handler,
+    llm_handler,
+    params,
+    config,
+    save_dir="/output"
+)
+
+# Access results
+if result.success:
+    for audio in result.audios:
+        print(f"Generated: {audio['path']}")
+        print(f"Seed: {audio['params']['seed']}")
+else:
+    print(f"Error: {result.error}")
+```
+
+## Result Objects
+
+### GenerationResult
+
+Returned by `generate_music()`:
+
+<ResponseField name="audios" type="List[Dict]">
+  List of generated audio dictionaries. Each contains:
+  - `path` (str): File path to saved audio
+  - `tensor` (Tensor): Audio tensor [channels, samples]
+  - `key` (str): Unique UUID identifier
+  - `sample_rate` (int): Sample rate (default: 48000)
+  - `params` (Dict): Generation parameters including seed
+</ResponseField>
+
+<ResponseField name="status_message" type="str">
+  Human-readable status message from generation
+</ResponseField>
+
+<ResponseField name="extra_outputs" type="Dict">
+  Additional outputs including:
+  - `lm_metadata`: LM-generated metadata
+  - `time_costs`: Timing information for LM and DiT phases
+  - `latents`: Intermediate latent tensors (if available)
+</ResponseField>
+
+<ResponseField name="success" type="bool">
+  Whether generation completed successfully
+</ResponseField>
+
+<ResponseField name="error" type="Optional[str]">
+  Error message if generation failed
+</ResponseField>
+
+### UnderstandResult
+
+Returned by `understand_music()`:
+
+<ResponseField name="caption" type="str">
+  Generated caption describing the music
+</ResponseField>
+
+<ResponseField name="lyrics" type="str">
+  Extracted or generated lyrics
+</ResponseField>
+
+<ResponseField name="bpm" type="Optional[int]">
+  Detected beats per minute
+</ResponseField>
+
+<ResponseField name="duration" type="Optional[float]">
+  Duration in seconds
+</ResponseField>
+
+<ResponseField name="keyscale" type="str">
+  Musical key (e.g., "C Major")
+</ResponseField>
+
+<ResponseField name="language" type="str">
+  Vocal language code (e.g., "en")
+</ResponseField>
+
+<ResponseField name="timesignature" type="str">
+  Time signature (e.g., "4")
+</ResponseField>
+
+### CreateSampleResult
+
+Returned by `create_sample()` - same fields as UnderstandResult plus:
+
+<ResponseField name="instrumental" type="bool">
+  Whether this is an instrumental piece
+</ResponseField>
+
+### FormatSampleResult
+
+Returned by `format_sample()` - same fields as UnderstandResult.
+
+## Task Types
+
+The API supports 6 different generation tasks. See [Task Types](/api-reference/inference/task-types) for details:
+
+- **text2music**: Generate music from text descriptions
+- **cover**: Style transfer from reference audio
+- **repaint**: Selective audio region editing
+- **lego**: Multi-track generation (base model only)
+- **extract**: Stem separation (base model only)
+- **complete**: Auto-complete partial audio (base model only)
+
+## Best Practices
+
+### Memory Management
+
+ACE-Step 1.5 includes automatic VRAM management:
+
+- Automatic GPU tier detection
+- VRAM guard before inference
+- Adaptive VAE decode with CPU fallback
+- Auto chunk sizing based on free VRAM
+
+<Note>
+For manual tuning on low-VRAM GPUs, reduce `batch_size` or enable `offload_to_cpu=True` and `quantization="int8_weight_only"` during initialization.
+</Note>
+
+### Quality vs Speed
+
+**For Best Quality:**
+```python
+params = GenerationParams(
+    inference_steps=64,
+    guidance_scale=8.0,
+    use_adg=True,
+    shift=3.0
+)
+config = GenerationConfig(audio_format="wav")
+```
+
+**For Speed:**
+```python
+params = GenerationParams(
+    inference_steps=8,
+    use_adg=False,
+    shift=3.0  # Recommended for turbo
+)
+config = GenerationConfig(audio_format="flac")
+```
+
+### Reproducibility
+
+```python
+params = GenerationParams(
+    seed=42,
+    lm_temperature=0.7  # Lower = more consistent
+)
+config = GenerationConfig(
+    use_random_seed=False,
+    seeds=[42, 123, 456]  # Fixed seeds for batch
+)
+```
+
+## Error Handling
+
+```python
+result = generate_music(dit_handler, llm_handler, params, config)
+
+if not result.success:
+    print(f"Generation failed: {result.error}")
+    print(f"Status: {result.status_message}")
+else:
+    # Process successful results
+    for audio in result.audios:
+        print(f"Generated: {audio['path']}")
+```
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Generation Parameters" icon="sliders" href="/api-reference/inference/generation-params">
+    Detailed documentation of all GenerationParams fields
+  </Card>
+  <Card title="Generation Config" icon="gear" href="/api-reference/inference/generation-config">
+    Batch processing and output configuration
+  </Card>
+  <Card title="Task Types" icon="list-check" href="/api-reference/inference/task-types">
+    Complete guide to all 6 task types with examples
+  </Card>
+  <Card title="REST API" icon="code" href="/api-reference/rest/endpoints#post-releasetask">
+    HTTP endpoint for remote inference
+  </Card>
+</CardGroup>

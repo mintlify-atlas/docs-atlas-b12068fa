@@ -1,0 +1,510 @@
+---
+title: 'Task Types'
+description: 'Complete guide to all 6 generation task types in ACE-Step 1.5'
+---
+
+## Overview
+
+ACE-Step supports 6 different generation task types, each optimized for specific use cases. Task types are specified via the `task_type` parameter in `GenerationParams`.
+
+<Note>
+**Model Compatibility:**
+- **Turbo models:** Support text2music, cover, repaint
+- **Base models:** Support all 6 task types
+</Note>
+
+## 1. Text2Music (Default)
+
+### Purpose
+
+Generate music from text descriptions and optional metadata.
+
+### Parameters
+
+```python
+from acestep.inference import GenerationParams
+
+params = GenerationParams(
+    task_type="text2music",
+    caption="energetic rock music with electric guitar",
+    lyrics="[Instrumental]",  # or actual lyrics
+    bpm=140,
+    duration=30,
+    keyscale="E minor"
+)
+```
+
+<ParamField path="caption" type="str" required>
+  Text description of desired music
+</ParamField>
+
+<ParamField path="lyrics" type="str">
+  Lyrics text or `"[Instrumental]"` for instrumental music
+</ParamField>
+
+<ParamField path="bpm" type="Optional[int]">
+  Tempo (auto-detected if None)
+</ParamField>
+
+<ParamField path="keyscale" type="str">
+  Musical key (auto-detected if empty)
+</ParamField>
+
+<ParamField path="timesignature" type="str">
+  Time signature (auto-detected if empty)
+</ParamField>
+
+<ParamField path="duration" type="float">
+  Length in seconds (auto if ≤ 0)
+</ParamField>
+
+<ParamField path="vocal_language" type="str">
+  Language code for vocals (auto-detected if "unknown")
+</ParamField>
+
+### Use Cases
+
+- Generate music from text descriptions
+- Create backing tracks from prompts
+- Generate songs with lyrics
+
+### Examples
+
+<CodeGroup>
+```python Instrumental
+params = GenerationParams(
+    task_type="text2music",
+    caption="calm ambient music with soft piano",
+    instrumental=True,
+    duration=60,
+    bpm=80
+)
+```
+
+```python With Lyrics
+params = GenerationParams(
+    task_type="text2music",
+    caption="pop ballad with emotional vocals",
+    lyrics="""[Verse]
+    In the silence of the night
+    I find the words to say
+    
+    [Chorus]
+    Don't let go, hold on tight
+    Together we'll find our way
+    """,
+    vocal_language="en",
+    bpm=72
+)
+```
+</CodeGroup>
+
+---
+
+## 2. Cover
+
+### Purpose
+
+Transform existing audio while maintaining structure but changing style/timbre.
+
+### Parameters
+
+```python
+params = GenerationParams(
+    task_type="cover",
+    src_audio="original_song.mp3",
+    caption="jazz piano version",
+    audio_cover_strength=0.8
+)
+```
+
+<ParamField path="src_audio" type="str" required>
+  Path to source audio file
+</ParamField>
+
+<ParamField path="caption" type="str" required>
+  Description of desired style/transformation
+</ParamField>
+
+<ParamField path="audio_cover_strength" type="float" default="1.0">
+  Influence of original audio (0.0-1.0):
+  - `1.0`: Strong adherence to original structure
+  - `0.5`: Balanced transformation
+  - `0.2`: Loose interpretation (style transfer)
+</ParamField>
+
+<ParamField path="lyrics" type="str">
+  New lyrics (if changing vocals)
+</ParamField>
+
+### Use Cases
+
+- Create covers in different styles
+- Change instrumentation while keeping melody
+- Genre transformation
+
+### Examples
+
+<CodeGroup>
+```python Genre Transformation
+params = GenerationParams(
+    task_type="cover",
+    src_audio="pop_song.mp3",
+    caption="orchestral symphonic arrangement",
+    audio_cover_strength=0.7
+)
+```
+
+```python Style Transfer
+params = GenerationParams(
+    task_type="cover",
+    src_audio="acoustic.mp3",
+    caption="electronic synthwave version",
+    audio_cover_strength=0.3  # Loose interpretation
+)
+```
+</CodeGroup>
+
+---
+
+## 3. Repaint
+
+### Purpose
+
+Regenerate a specific time segment of audio while keeping the rest unchanged.
+
+### Parameters
+
+```python
+params = GenerationParams(
+    task_type="repaint",
+    src_audio="original.mp3",
+    repainting_start=10.0,  # seconds
+    repainting_end=20.0,    # seconds
+    caption="smooth transition with piano solo"
+)
+```
+
+<ParamField path="src_audio" type="str" required>
+  Path to source audio file
+</ParamField>
+
+<ParamField path="repainting_start" type="float" required>
+  Start time in seconds
+</ParamField>
+
+<ParamField path="repainting_end" type="float" required>
+  End time in seconds (use -1 for end of file)
+</ParamField>
+
+<ParamField path="caption" type="str" required>
+  Description of desired content for repainted section
+</ParamField>
+
+### Use Cases
+
+- Fix specific sections of generated music
+- Add variations to parts of a song
+- Create smooth transitions
+- Replace problematic segments
+
+### Examples
+
+<CodeGroup>
+```python Fix Section
+params = GenerationParams(
+    task_type="repaint",
+    src_audio="song.mp3",
+    repainting_start=30.0,
+    repainting_end=45.0,
+    caption="energetic drum solo"
+)
+```
+
+```python Add Variation
+params = GenerationParams(
+    task_type="repaint",
+    src_audio="loop.mp3",
+    repainting_start=15.0,
+    repainting_end=-1,  # Until end
+    caption="melodic guitar variation"
+)
+```
+</CodeGroup>
+
+---
+
+## 4. Lego (Base Model Only)
+
+### Purpose
+
+Generate a specific instrument track in context of existing audio.
+
+### Parameters
+
+```python
+params = GenerationParams(
+    task_type="lego",
+    src_audio="backing_track.mp3",
+    instruction="Generate the guitar track based on the audio context:",
+    caption="lead guitar melody with bluesy feel",
+    repainting_start=0.0,
+    repainting_end=-1
+)
+```
+
+<ParamField path="src_audio" type="str" required>
+  Path to source/backing audio
+</ParamField>
+
+<ParamField path="instruction" type="str" required>
+  Must specify track type (e.g., "Generate the guitar track...")
+</ParamField>
+
+<ParamField path="caption" type="str" required>
+  Description of desired track characteristics
+</ParamField>
+
+### Available Tracks
+
+- `vocals` - Lead vocals
+- `backing_vocals` - Background vocals
+- `drums` - Drum kit
+- `bass` - Bass guitar/synth bass
+- `guitar` - Electric/acoustic guitar
+- `keyboard` - Piano/organ/keys
+- `percussion` - Auxiliary percussion
+- `strings` - String section
+- `synth` - Synthesizers
+- `fx` - Sound effects
+- `brass` - Brass section
+- `woodwinds` - Woodwind instruments
+
+### Use Cases
+
+- Add specific instrument tracks
+- Layer additional instruments over backing tracks
+- Create multi-track compositions iteratively
+
+### Examples
+
+<CodeGroup>
+```python Add Vocals
+params = GenerationParams(
+    task_type="lego",
+    src_audio="instrumental.mp3",
+    instruction="Generate the vocals track based on the audio context:",
+    caption="soulful male vocals with emotional delivery",
+    lyrics="""[Verse]
+    Lost in the moment
+    Finding my way back home
+    """
+)
+```
+
+```python Add Lead Guitar
+params = GenerationParams(
+    task_type="lego",
+    src_audio="rhythm_section.mp3",
+    instruction="Generate the guitar track based on the audio context:",
+    caption="melodic lead guitar solo"
+)
+```
+</CodeGroup>
+
+---
+
+## 5. Extract (Base Model Only)
+
+### Purpose
+
+Extract/isolate a specific instrument track from mixed audio.
+
+### Parameters
+
+```python
+params = GenerationParams(
+    task_type="extract",
+    src_audio="full_mix.mp3",
+    instruction="Extract the vocals track from the audio:"
+)
+```
+
+<ParamField path="src_audio" type="str" required>
+  Path to mixed audio file
+</ParamField>
+
+<ParamField path="instruction" type="str" required>
+  Must specify track to extract (e.g., "Extract the vocals track...")
+</ParamField>
+
+### Available Tracks
+
+Same as Lego task (see above).
+
+### Use Cases
+
+- Stem separation
+- Isolate specific instruments
+- Create remixes
+- Analyze individual tracks
+
+### Examples
+
+<CodeGroup>
+```python Extract Vocals
+params = GenerationParams(
+    task_type="extract",
+    src_audio="song.mp3",
+    instruction="Extract the vocals track from the audio:"
+)
+```
+
+```python Extract Drums
+params = GenerationParams(
+    task_type="extract",
+    src_audio="full_mix.mp3",
+    instruction="Extract the drums track from the audio:"
+)
+```
+</CodeGroup>
+
+---
+
+## 6. Complete (Base Model Only)
+
+### Purpose
+
+Complete/extend partial tracks with specified instruments.
+
+### Parameters
+
+```python
+params = GenerationParams(
+    task_type="complete",
+    src_audio="incomplete_track.mp3",
+    instruction="Complete the input track with drums, bass, guitar:",
+    caption="rock style completion"
+)
+```
+
+<ParamField path="src_audio" type="str" required>
+  Path to incomplete/partial track
+</ParamField>
+
+<ParamField path="instruction" type="str" required>
+  Must specify which tracks to add
+</ParamField>
+
+<ParamField path="caption" type="str" required>
+  Description of desired style
+</ParamField>
+
+### Use Cases
+
+- Arrange incomplete compositions
+- Add backing tracks
+- Auto-complete musical ideas
+
+### Examples
+
+<CodeGroup>
+```python Add Rhythm Section
+params = GenerationParams(
+    task_type="complete",
+    src_audio="melody.mp3",
+    instruction="Complete the input track with drums, bass:",
+    caption="upbeat pop rock style"
+)
+```
+
+```python Full Arrangement
+params = GenerationParams(
+    task_type="complete",
+    src_audio="vocal_melody.mp3",
+    instruction="Complete the input track with drums, bass, guitar, keyboard:",
+    caption="indie rock ballad arrangement"
+)
+```
+</CodeGroup>
+
+---
+
+## Task Type Comparison
+
+| Task | Input | Output | Model Support | Primary Use |
+|------|-------|--------|---------------|-------------|
+| **text2music** | Text + metadata | New audio | All | Generate from scratch |
+| **cover** | Audio + style | Transformed audio | All | Style transfer |
+| **repaint** | Audio + region | Edited audio | All | Selective editing |
+| **lego** | Audio + track type | New track layer | Base only | Add instruments |
+| **extract** | Mixed audio + track | Isolated track | Base only | Stem separation |
+| **complete** | Partial audio + tracks | Full arrangement | Base only | Auto-arrangement |
+
+## Complete Workflow Example
+
+```python
+from acestep.inference import (
+    generate_music,
+    GenerationParams,
+    GenerationConfig
+)
+
+# Step 1: Generate base music
+params = GenerationParams(
+    task_type="text2music",
+    caption="upbeat indie rock instrumental",
+    duration=60
+)
+
+result = generate_music(
+    dit_handler,
+    llm_handler,
+    params,
+    GenerationConfig(batch_size=1),
+    save_dir="/output"
+)
+
+base_audio = result.audios[0]['path']
+
+# Step 2: Add vocals using lego
+params = GenerationParams(
+    task_type="lego",
+    src_audio=base_audio,
+    instruction="Generate the vocals track based on the audio context:",
+    caption="energetic male vocals",
+    lyrics="[Verse]\nRunning through the city lights..."
+)
+
+result = generate_music(
+    dit_handler,
+    llm_handler,
+    params,
+    GenerationConfig(batch_size=1),
+    save_dir="/output"
+)
+
+vocal_track = result.audios[0]['path']
+
+# Step 3: Create alternative style cover
+params = GenerationParams(
+    task_type="cover",
+    src_audio=vocal_track,
+    caption="acoustic unplugged version",
+    audio_cover_strength=0.6
+)
+
+result = generate_music(
+    dit_handler,
+    llm_handler,
+    params,
+    GenerationConfig(batch_size=1),
+    save_dir="/output"
+)
+```
+
+## See Also
+
+- [Generation Parameters](/api-reference/inference/generation-params) - Complete parameter reference
+- [Overview](/api-reference/inference/overview) - API introduction
+- [Generation Config](/api-reference/inference/generation-config) - Batch configuration

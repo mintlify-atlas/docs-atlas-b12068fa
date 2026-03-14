@@ -1,0 +1,832 @@
+---
+title: API Endpoints
+description: Complete REST API endpoint reference with request/response schemas
+---
+
+## POST /release_task
+
+Create a music generation task and receive a task ID for status tracking.
+
+### Request
+
+<CodeGroup>
+```bash Basic JSON
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "prompt": "upbeat pop song",
+    "lyrics": "Hello world",
+    "inference_steps": 8
+  }'
+```
+
+```bash With Thinking Mode
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "prompt": "upbeat pop song",
+    "lyrics": "Hello world",
+    "thinking": true,
+    "lm_temperature": 0.85,
+    "lm_cfg_scale": 2.5
+  }'
+```
+
+```bash Sample Query Mode
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "sample_query": "a soft Bengali love song for a quiet evening",
+    "thinking": true
+  }'
+```
+
+```bash With Model Selection
+curl -X POST http://localhost:8001/release_task \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "prompt": "electronic dance music",
+    "model": "acestep-v15-turbo",
+    "thinking": true
+  }'
+```
+
+```bash File Upload
+curl -X POST http://localhost:8001/release_task \
+  -F "prompt=remix this song" \
+  -F "src_audio=@/path/to/local/song.mp3" \
+  -F "task_type=repaint"
+```
+</CodeGroup>
+
+### Parameters
+
+#### Basic Parameters
+
+<ParamField body="prompt" type="string" default="">
+  Music description prompt. Also accepts alias `caption`.
+</ParamField>
+
+<ParamField body="lyrics" type="string" default="">
+  Lyrics content for vocal generation
+</ParamField>
+
+<ParamField body="thinking" type="boolean" default={false}>
+  Enable 5Hz LM to generate audio codes for enhanced quality (lm-dit behavior)
+</ParamField>
+
+<ParamField body="vocal_language" type="string" default="en">
+  Lyrics language code (en, zh, ja, etc.)
+</ParamField>
+
+<ParamField body="audio_format" type="string" default="mp3">
+  Output format: mp3, wav, flac, opus, aac, wav32
+</ParamField>
+
+#### Sample/Description Mode
+
+<ParamField body="sample_mode" type="boolean" default={false}>
+  Enable random sample generation mode (auto-generates caption/lyrics/metas via LM)
+</ParamField>
+
+<ParamField body="sample_query" type="string" default="">
+  Natural language description for sample generation. Aliases: `description`, `desc`
+</ParamField>
+
+<ParamField body="use_format" type="boolean" default={false}>
+  Use LM to enhance/format provided caption and lyrics. Alias: `format`
+</ParamField>
+
+#### Model Selection
+
+<ParamField body="model" type="string" default={null}>
+  Select which DiT model to use (e.g., "acestep-v15-turbo", "acestep-v15-base"). Use `/v1/models` to list available models.
+</ParamField>
+
+#### Music Attributes
+
+<ParamField body="bpm" type="integer" default={null}>
+  Tempo in beats per minute (range: 30-300)
+</ParamField>
+
+<ParamField body="key_scale" type="string" default="">
+  Musical key and scale (e.g., "C Major", "Am"). Aliases: `keyscale`, `keyScale`
+</ParamField>
+
+<ParamField body="time_signature" type="string" default="">
+  Time signature: 2, 3, 4, 6 for 2/4, 3/4, 4/4, 6/8. Aliases: `timesignature`, `timeSignature`
+</ParamField>
+
+<ParamField body="audio_duration" type="float" default={null}>
+  Generation duration in seconds (range: 10-600). Aliases: `duration`, `target_duration`
+</ParamField>
+
+#### Generation Control
+
+<ParamField body="inference_steps" type="integer" default={8}>
+  Number of diffusion inference steps. Turbo: 1-20 (recommended 8), Base: 1-200 (recommended 32-64)
+</ParamField>
+
+<ParamField body="guidance_scale" type="float" default={7.0}>
+  Prompt guidance coefficient (only effective for base models)
+</ParamField>
+
+<ParamField body="use_random_seed" type="boolean" default={true}>
+  Whether to use random seed for generation
+</ParamField>
+
+<ParamField body="seed" type="integer" default={-1}>
+  Fixed seed value (when use_random_seed=false)
+</ParamField>
+
+<ParamField body="batch_size" type="integer" default={2}>
+  Number of variations to generate (max 8)
+</ParamField>
+
+#### Advanced DiT Parameters
+
+<ParamField body="shift" type="float" default={3.0}>
+  Timestep shift factor (range 1.0-5.0). Only effective for base models, not turbo.
+</ParamField>
+
+<ParamField body="infer_method" type="string" default="ode">
+  Diffusion inference method: "ode" (Euler, faster) or "sde" (stochastic)
+</ParamField>
+
+<ParamField body="timesteps" type="string" default={null}>
+  Custom timesteps as comma-separated values (e.g., "0.97,0.76,0.615,0.5,0.395,0.28,0.18,0.085,0"). Overrides inference_steps and shift.
+</ParamField>
+
+<ParamField body="use_adg" type="boolean" default={false}>
+  Use Adaptive Dual Guidance (base model only)
+</ParamField>
+
+<ParamField body="cfg_interval_start" type="float" default={0.0}>
+  CFG application start ratio (0.0-1.0)
+</ParamField>
+
+<ParamField body="cfg_interval_end" type="float" default={1.0}>
+  CFG application end ratio (0.0-1.0)
+</ParamField>
+
+#### 5Hz LM Parameters
+
+<ParamField body="lm_model_path" type="string" default={null}>
+  5Hz LM checkpoint directory name (e.g., "acestep-5Hz-lm-0.6B")
+</ParamField>
+
+<ParamField body="lm_backend" type="string" default="vllm">
+  LM backend: vllm, pt, or mlx
+</ParamField>
+
+<ParamField body="lm_temperature" type="float" default={0.85}>
+  LM sampling temperature
+</ParamField>
+
+<ParamField body="lm_cfg_scale" type="float" default={2.5}>
+  LM CFG scale (>1 enables classifier-free guidance)
+</ParamField>
+
+<ParamField body="lm_top_k" type="integer" default={null}>
+  Top-k sampling (0 or null disables)
+</ParamField>
+
+<ParamField body="lm_top_p" type="float" default={0.9}>
+  Top-p nucleus sampling (>=1 disables)
+</ParamField>
+
+<ParamField body="lm_repetition_penalty" type="float" default={1.0}>
+  Repetition penalty for LM sampling
+</ParamField>
+
+#### LM Chain-of-Thought
+
+<ParamField body="use_cot_caption" type="boolean" default={true}>
+  Let LM rewrite/enhance input caption via CoT reasoning. Aliases: `cot_caption`, `cot-caption`
+</ParamField>
+
+<ParamField body="use_cot_language" type="boolean" default={true}>
+  Let LM detect vocal language via CoT. Aliases: `cot_language`, `cot-language`
+</ParamField>
+
+<ParamField body="constrained_decoding" type="boolean" default={true}>
+  Enable FSM-based constrained decoding for structured LM output. Aliases: `constrainedDecoding`, `constrained`
+</ParamField>
+
+#### Edit/Reference Audio
+
+<ParamField body="reference_audio_path" type="string" default={null}>
+  Server-side path to reference audio file (for style transfer)
+</ParamField>
+
+<ParamField body="src_audio_path" type="string" default={null}>
+  Server-side path to source audio file (for repainting/cover)
+</ParamField>
+
+<ParamField body="task_type" type="string" default="text2music">
+  Task type: text2music, cover, repaint, lego, extract, complete
+</ParamField>
+
+<ParamField body="instruction" type="string" default="auto">
+  Edit instruction (auto-generated based on task_type if not provided)
+</ParamField>
+
+<ParamField body="repainting_start" type="float" default={0.0}>
+  Repainting start time in seconds
+</ParamField>
+
+<ParamField body="repainting_end" type="float" default={null}>
+  Repainting end time in seconds (-1 for end of audio)
+</ParamField>
+
+<ParamField body="audio_cover_strength" type="float" default={1.0}>
+  Cover strength (0.0-1.0). Lower values (0.2) for style transfer.
+</ParamField>
+
+#### File Upload Fields (multipart/form-data)
+
+<ParamField body="reference_audio" type="file">
+  Upload reference audio file (alternative to reference_audio_path). Alias: `ref_audio`
+</ParamField>
+
+<ParamField body="src_audio" type="file">
+  Upload source audio file (alternative to src_audio_path). Alias: `ctx_audio`
+</ParamField>
+
+### Response
+
+<ResponseField name="data" type="object">
+  Task creation response
+  
+  <Expandable title="properties">
+    <ResponseField name="task_id" type="string">
+      Unique task identifier (UUID format)
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Initial task status: "queued"
+    </ResponseField>
+    
+    <ResponseField name="queue_position" type="integer">
+      Position in the processing queue
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="code" type="integer">
+  HTTP status code (200 for success)
+</ResponseField>
+
+<ResponseField name="error" type="string | null">
+  Error message or null
+</ResponseField>
+
+<ResponseField name="timestamp" type="integer">
+  Response timestamp in milliseconds
+</ResponseField>
+
+```json Example Response
+{
+  "data": {
+    "task_id": "550e8400-e29b-41d4-a716-446655440000",
+    "status": "queued",
+    "queue_position": 1
+  },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+---
+
+## POST /query_result
+
+Batch query the status and results of one or more generation tasks.
+
+### Request
+
+```bash
+curl -X POST http://localhost:8001/query_result \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "task_id_list": ["550e8400-e29b-41d4-a716-446655440000"]
+  }'
+```
+
+### Parameters
+
+<ParamField body="task_id_list" type="string | array" required>
+  List of task IDs to query. Can be a JSON array or JSON-encoded string array.
+</ParamField>
+
+### Response
+
+<ResponseField name="data" type="array">
+  Array of task result objects
+  
+  <Expandable title="items">
+    <ResponseField name="task_id" type="string">
+      Task identifier
+    </ResponseField>
+    
+    <ResponseField name="status" type="integer">
+      Task status code: 0 (queued/running), 1 (succeeded), 2 (failed)
+    </ResponseField>
+    
+    <ResponseField name="result" type="string">
+      JSON-encoded result payload (parse as JSON to access fields)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json Example Response
+{
+  "data": [
+    {
+      "task_id": "550e8400-e29b-41d4-a716-446655440000",
+      "status": 1,
+      "result": "[{\"file\":\"/v1/audio?path=...\",\"status\":1,\"create_time\":1700000000,\"prompt\":\"upbeat pop song\",\"lyrics\":\"Hello world\",\"metas\":{\"bpm\":120,\"duration\":30,\"keyscale\":\"C Major\",\"timesignature\":\"4\"},\"seed_value\":\"12345,67890\",\"lm_model\":\"acestep-5Hz-lm-0.6B\",\"dit_model\":\"acestep-v15-turbo\"}]"
+    }
+  ],
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+#### Parsed Result Fields
+
+The `result` field is a JSON string. After parsing, it contains an array of generation results:
+
+<ResponseField name="file" type="string">
+  Audio file URL (use with `/v1/audio` endpoint)
+</ResponseField>
+
+<ResponseField name="status" type="integer">
+  Generation status: 0 (in progress), 1 (success), 2 (failed)
+</ResponseField>
+
+<ResponseField name="create_time" type="integer">
+  Creation timestamp (Unix seconds)
+</ResponseField>
+
+<ResponseField name="prompt" type="string">
+  Prompt used for generation
+</ResponseField>
+
+<ResponseField name="lyrics" type="string">
+  Lyrics used for generation
+</ResponseField>
+
+<ResponseField name="metas" type="object">
+  Metadata object containing bpm, duration, keyscale, timesignature, genres
+</ResponseField>
+
+<ResponseField name="generation_info" type="string">
+  Summary of generation parameters
+</ResponseField>
+
+<ResponseField name="seed_value" type="string">
+  Comma-separated seed values used
+</ResponseField>
+
+<ResponseField name="lm_model" type="string">
+  LM model name used (if applicable)
+</ResponseField>
+
+<ResponseField name="dit_model" type="string">
+  DiT model name used
+</ResponseField>
+
+---
+
+## POST /format_input
+
+Use LLM to enhance and format user-provided caption and lyrics.
+
+### Request
+
+```bash
+curl -X POST http://localhost:8001/format_input \
+  -H 'Content-Type: application/json' \
+  -d '{
+    "prompt": "pop rock",
+    "lyrics": "Walking down the street",
+    "param_obj": "{\"duration\": 180, \"language\": \"en\"}"
+  }'
+```
+
+### Parameters
+
+<ParamField body="prompt" type="string" default="">
+  Music description prompt to enhance
+</ParamField>
+
+<ParamField body="lyrics" type="string" default="">
+  Lyrics content to format
+</ParamField>
+
+<ParamField body="temperature" type="float" default={0.85}>
+  LM sampling temperature
+</ParamField>
+
+<ParamField body="param_obj" type="string" default="{}">
+  JSON string containing metadata hints: duration, bpm, key, time_signature, language
+</ParamField>
+
+### Response
+
+<ResponseField name="data" type="object">
+  Formatted input data
+  
+  <Expandable title="properties">
+    <ResponseField name="caption" type="string">
+      Enhanced music description
+    </ResponseField>
+    
+    <ResponseField name="lyrics" type="string">
+      Formatted lyrics
+    </ResponseField>
+    
+    <ResponseField name="bpm" type="integer">
+      Detected or provided BPM
+    </ResponseField>
+    
+    <ResponseField name="key_scale" type="string">
+      Detected or provided key/scale
+    </ResponseField>
+    
+    <ResponseField name="time_signature" type="string">
+      Detected or provided time signature
+    </ResponseField>
+    
+    <ResponseField name="duration" type="float">
+      Detected or provided duration in seconds
+    </ResponseField>
+    
+    <ResponseField name="vocal_language" type="string">
+      Detected or provided vocal language
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json Example Response
+{
+  "data": {
+    "caption": "Energetic pop rock song with driving guitar riffs and upbeat rhythm",
+    "lyrics": "[Verse 1]\nWalking down the street...",
+    "bpm": 120,
+    "key_scale": "C Major",
+    "time_signature": "4",
+    "duration": 180,
+    "vocal_language": "en"
+  },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+---
+
+## POST /create_random_sample
+
+Get random sample parameters from pre-loaded example data for form filling.
+
+### Request
+
+```bash
+curl -X POST http://localhost:8001/create_random_sample \
+  -H 'Content-Type: application/json' \
+  -d '{"sample_type": "simple_mode"}'
+```
+
+### Parameters
+
+<ParamField body="sample_type" type="string" default="simple_mode">
+  Sample type: "simple_mode" or "custom_mode"
+</ParamField>
+
+### Response
+
+<ResponseField name="data" type="object">
+  Random sample parameters
+  
+  <Expandable title="properties">
+    <ResponseField name="caption" type="string">
+      Sample music description
+    </ResponseField>
+    
+    <ResponseField name="lyrics" type="string">
+      Sample lyrics
+    </ResponseField>
+    
+    <ResponseField name="bpm" type="integer">
+      Sample BPM
+    </ResponseField>
+    
+    <ResponseField name="key_scale" type="string">
+      Sample key/scale
+    </ResponseField>
+    
+    <ResponseField name="time_signature" type="string">
+      Sample time signature
+    </ResponseField>
+    
+    <ResponseField name="duration" type="integer">
+      Sample duration in seconds
+    </ResponseField>
+    
+    <ResponseField name="vocal_language" type="string">
+      Sample language
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json Example Response
+{
+  "data": {
+    "caption": "Upbeat pop song with guitar accompaniment",
+    "lyrics": "[Verse 1]\nSunshine on my face...",
+    "bpm": 120,
+    "key_scale": "G Major",
+    "time_signature": "4",
+    "duration": 180,
+    "vocal_language": "en"
+  },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+---
+
+## GET /v1/models
+
+List available DiT and LM models loaded on the server.
+
+### Request
+
+```bash
+curl http://localhost:8001/v1/models
+```
+
+### Response
+
+<ResponseField name="data" type="object">
+  Model inventory
+  
+  <Expandable title="properties">
+    <ResponseField name="models" type="array">
+      Array of DiT model objects
+      <Expandable title="items">
+        <ResponseField name="name" type="string">
+          Model name
+        </ResponseField>
+        <ResponseField name="is_default" type="boolean">
+          Whether this is the default model
+        </ResponseField>
+        <ResponseField name="is_loaded" type="boolean">
+          Whether this model is currently loaded in memory
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="default_model" type="string">
+      Name of the default DiT model
+    </ResponseField>
+    
+    <ResponseField name="lm_models" type="array">
+      Array of LM model objects
+      <Expandable title="items">
+        <ResponseField name="name" type="string">
+          LM model name
+        </ResponseField>
+        <ResponseField name="is_loaded" type="boolean">
+          Whether this LM model is loaded
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="loaded_lm_model" type="string | null">
+      Currently loaded LM model name
+    </ResponseField>
+    
+    <ResponseField name="llm_initialized" type="boolean">
+      Whether LLM handler is initialized
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json Example Response
+{
+  "data": {
+    "models": [
+      {
+        "name": "acestep-v15-turbo",
+        "is_default": true,
+        "is_loaded": true
+      },
+      {
+        "name": "acestep-v15-base",
+        "is_default": false,
+        "is_loaded": false
+      }
+    ],
+    "default_model": "acestep-v15-turbo",
+    "lm_models": [
+      {
+        "name": "acestep-5Hz-lm-0.6B",
+        "is_loaded": true
+      }
+    ],
+    "loaded_lm_model": "acestep-5Hz-lm-0.6B",
+    "llm_initialized": true
+  },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+---
+
+## GET /v1/stats
+
+Get server runtime statistics including job counts and queue status.
+
+### Request
+
+```bash
+curl http://localhost:8001/v1/stats
+```
+
+### Response
+
+<ResponseField name="data" type="object">
+  Server statistics
+  
+  <Expandable title="properties">
+    <ResponseField name="jobs" type="object">
+      Job store statistics
+      <Expandable title="properties">
+        <ResponseField name="total" type="integer">
+          Total jobs processed
+        </ResponseField>
+        <ResponseField name="queued" type="integer">
+          Jobs currently queued
+        </ResponseField>
+        <ResponseField name="running" type="integer">
+          Jobs currently running
+        </ResponseField>
+        <ResponseField name="succeeded" type="integer">
+          Jobs that succeeded
+        </ResponseField>
+        <ResponseField name="failed" type="integer">
+          Jobs that failed
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="queue_size" type="integer">
+      Current queue size
+    </ResponseField>
+    
+    <ResponseField name="queue_maxsize" type="integer">
+      Maximum queue capacity
+    </ResponseField>
+    
+    <ResponseField name="avg_job_seconds" type="float">
+      Rolling average job duration in seconds
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json Example Response
+{
+  "data": {
+    "jobs": {
+      "total": 100,
+      "queued": 5,
+      "running": 1,
+      "succeeded": 90,
+      "failed": 4
+    },
+    "queue_size": 5,
+    "queue_maxsize": 200,
+    "avg_job_seconds": 8.5
+  },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+---
+
+## GET /v1/audio
+
+Download generated audio files by path.
+
+### Request
+
+```bash
+curl "http://localhost:8001/v1/audio?path=%2Ftmp%2Fapi_audio%2Fabc123.mp3" -o output.mp3
+```
+
+### Parameters
+
+<ParamField query="path" type="string" required>
+  URL-encoded path to the audio file (returned in task result)
+</ParamField>
+
+### Response
+
+Returns the audio file with appropriate MIME type:
+
+- `.mp3` → `audio/mpeg`
+- `.wav` → `audio/wav`
+- `.flac` → `audio/flac`
+- `.ogg` → `audio/ogg`
+
+<Note>
+  The path must be within the allowed server directory for security. Paths outside this directory will return 403 Forbidden.
+</Note>
+
+---
+
+## GET /health
+
+Health check endpoint for service status and model initialization state.
+
+### Request
+
+```bash
+curl http://localhost:8001/health
+```
+
+### Response
+
+<ResponseField name="data" type="object">
+  Health status information
+  
+  <Expandable title="properties">
+    <ResponseField name="status" type="string">
+      Service status: "ok"
+    </ResponseField>
+    
+    <ResponseField name="service" type="string">
+      Service name: "ACE-Step API"
+    </ResponseField>
+    
+    <ResponseField name="version" type="string">
+      API version
+    </ResponseField>
+    
+    <ResponseField name="models_initialized" type="boolean">
+      Whether primary DiT model is initialized
+    </ResponseField>
+    
+    <ResponseField name="llm_initialized" type="boolean">
+      Whether LLM handler is initialized
+    </ResponseField>
+    
+    <ResponseField name="loaded_model" type="string | null">
+      Currently loaded DiT model name
+    </ResponseField>
+    
+    <ResponseField name="loaded_lm_model" type="string | null">
+      Currently loaded LM model name
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+```json Example Response
+{
+  "data": {
+    "status": "ok",
+    "service": "ACE-Step API",
+    "version": "1.0",
+    "models_initialized": true,
+    "llm_initialized": true,
+    "loaded_model": "acestep-v15-turbo",
+    "loaded_lm_model": "acestep-5Hz-lm-0.6B"
+  },
+  "code": 200,
+  "error": null,
+  "timestamp": 1700000000000,
+  "extra": null
+}
+```
+
+<Warning>
+  The `/health` endpoint does not require authentication even when API keys are enabled. This allows load balancers and monitoring systems to check service health.
+</Warning>

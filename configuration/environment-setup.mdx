@@ -1,0 +1,419 @@
+---
+title: Environment Setup
+description: Configure ACE-Step 1.5 using environment variables and .env files
+---
+
+ACE-Step 1.5 uses environment variables to configure model paths, backend settings, API keys, and UI preferences. This guide covers all available configuration options.
+
+## Configuration File
+
+ACE-Step uses a `.env` file for persistent configuration. This file survives repository updates, unlike hardcoded values in launcher scripts which get overwritten on each update.
+
+<Note>
+Copy `.env.example` to `.env` and modify as needed. The `.env` file is used by Python scripts (`acestep_v15_pipeline.py`, `api_server.py`, etc.) and launcher scripts on all platforms.
+</Note>
+
+```bash
+# Copy the example configuration
+cp .env.example .env
+
+# Edit with your preferred editor
+nano .env
+```
+
+## Model Settings
+
+### DiT Model Path
+
+Specifies the diffusion transformer model to use for audio generation.
+
+```bash
+ACESTEP_CONFIG_PATH=acestep-v15-turbo
+```
+
+<Tabs>
+  <Tab title="Available Models">
+    - `acestep-v15-turbo`: Turbo model (faster, single-pass generation)
+    - `acestep-v15-base`: Base model (higher quality, uses CFG)
+  </Tab>
+  
+  <Tab title="Default">
+    `acestep-v15-turbo`
+  </Tab>
+</Tabs>
+
+### Language Model Path
+
+Specifies which 5Hz Language Model to use when LM is enabled.
+
+```bash
+ACESTEP_LM_MODEL_PATH=acestep-5Hz-lm-1.7B
+```
+
+<Tabs>
+  <Tab title="Available Models">
+    - `acestep-5Hz-lm-0.6B`: 600M parameters (6-8GB VRAM)
+    - `acestep-5Hz-lm-1.7B`: 1.7B parameters (12GB+ VRAM, recommended)
+    - `acestep-5Hz-lm-4B`: 4B parameters (24GB+ VRAM, best quality)
+  </Tab>
+  
+  <Tab title="Default">
+    `acestep-5Hz-lm-1.7B`
+  </Tab>
+  
+  <Tab title="GPU Compatibility">
+    The system automatically restricts available models based on your GPU tier. See [GPU Compatibility](/configuration/gpu-compatibility) for details.
+  </Tab>
+</Tabs>
+
+### Device Selection
+
+Controls which hardware device ACE-Step uses for inference.
+
+```bash
+ACESTEP_DEVICE=auto
+```
+
+<Tabs>
+  <Tab title="Values">
+    - `auto`: Automatically detect best available device (recommended)
+    - `cuda`: Force NVIDIA GPU (CUDA)
+    - `cpu`: Force CPU-only mode
+    - `xpu`: Force Intel XPU (Arc/Flex GPUs)
+  </Tab>
+  
+  <Tab title="Default">
+    `auto` - The system will prefer CUDA → XPU → MPS → CPU in that order
+  </Tab>
+</Tabs>
+
+### LM Backend
+
+Selects the inference backend for the Language Model.
+
+```bash
+ACESTEP_LM_BACKEND=vllm
+```
+
+<Tabs>
+  <Tab title="Backends">
+    - **vllm**: Optimized inference engine (faster, requires CUDA, 8GB+ VRAM)
+    - **pt**: PyTorch native (slower, works on all devices)
+    - **mlx**: Apple Silicon native acceleration (macOS only)
+  </Tab>
+  
+  <Tab title="Default">
+    `vllm` for NVIDIA GPUs with 8GB+ VRAM, `pt` for lower-end GPUs
+  </Tab>
+  
+  <Tab title="Platform Restrictions">
+    - **Tier 1-3 GPUs** (≤8GB): Restricted to `pt`/`mlx` (vllm KV cache too large)
+    - **Tier 4+ GPUs** (8GB+): All backends available
+    - **Apple Silicon (MPS)**: Restricted to `pt`/`mlx` (vllm requires CUDA)
+  </Tab>
+</Tabs>
+
+## LLM Initialization
+
+Controls whether to initialize the Language Model (5Hz LM) at startup.
+
+```bash
+ACESTEP_INIT_LLM=auto
+```
+
+### Configuration Flow
+
+The initialization flow follows this logic:
+
+```text
+GPU detection (full) → ACESTEP_INIT_LLM override → Model loading
+```
+
+<Note>
+GPU optimizations (offload, quantization, batch limits) are ALWAYS applied based on detected VRAM. `ACESTEP_INIT_LLM` only overrides the "should we try to load LLM" decision.
+</Note>
+
+### Values
+
+<AccordionGroup>
+  <Accordion title="auto (recommended)">
+    Use GPU auto-detection result. The system will enable LM for Tier 3+ GPUs (6GB+ VRAM) and disable it for Tier 1-2.
+    
+    ```bash
+    ACESTEP_INIT_LLM=auto
+    # or leave empty
+    ACESTEP_INIT_LLM=
+    ```
+  </Accordion>
+  
+  <Accordion title="true/1/yes">
+    Force enable LLM after GPU detection. May cause out-of-memory errors on low VRAM GPUs.
+    
+    ```bash
+    ACESTEP_INIT_LLM=true
+    # or
+    ACESTEP_INIT_LLM=1
+    # or
+    ACESTEP_INIT_LLM=yes
+    ```
+    
+    <Warning>
+    Forcing LLM on Tier 1-2 GPUs (≤6GB) will likely cause OOM errors.
+    </Warning>
+  </Accordion>
+  
+  <Accordion title="false/0/no">
+    Force disable LLM for pure DiT mode (faster, lower VRAM).
+    
+    ```bash
+    ACESTEP_INIT_LLM=false
+    # or
+    ACESTEP_INIT_LLM=0
+    # or
+    ACESTEP_INIT_LLM=no
+    ```
+    
+    When LLM is disabled, these features are unavailable:
+    - Thinking mode (`thinking=true`)
+    - Chain-of-Thought caption/language detection
+    - Sample mode (generate from description)
+    - Format mode (LLM-enhanced input)
+  </Accordion>
+</AccordionGroup>
+
+## Download Settings
+
+Configure where ACE-Step downloads models from.
+
+```bash
+ACESTEP_DOWNLOAD_SOURCE=auto
+```
+
+<Tabs>
+  <Tab title="Values">
+    - `auto`: Automatically select best source based on region (recommended)
+    - `huggingface`: Always use Hugging Face Hub
+    - `modelscope`: Always use ModelScope (faster in China)
+  </Tab>
+  
+  <Tab title="Default">
+    `auto`
+  </Tab>
+</Tabs>
+
+## API Server Settings
+
+### API Key Authentication
+
+Optional authentication for the API server.
+
+```bash
+ACESTEP_API_KEY=sk-your-secret-key
+```
+
+<Note>
+If set, all API requests must include the header `Authorization: Bearer sk-your-secret-key`
+</Note>
+
+<Tabs>
+  <Tab title="Usage Example">
+    ```bash
+    curl -H "Authorization: Bearer sk-your-secret-key" \
+         http://localhost:7860/v1/audio/generations
+    ```
+  </Tab>
+  
+  <Tab title="Security Note">
+    The API key is stored in plaintext in `.env`. Keep this file secure and do not commit it to version control.
+  </Tab>
+</Tabs>
+
+## Gradio UI Settings
+
+### Server Port
+
+```bash
+PORT=7860
+```
+
+**Default:** `7860`
+
+Change this if port 7860 is already in use on your system.
+
+### Server Name/Host
+
+```bash
+SERVER_NAME=127.0.0.1
+```
+
+<Tabs>
+  <Tab title="Local Access Only">
+    ```bash
+    SERVER_NAME=127.0.0.1
+    ```
+    
+    Only accessible from the same machine. Recommended for security.
+  </Tab>
+  
+  <Tab title="Network Access">
+    ```bash
+    SERVER_NAME=0.0.0.0
+    ```
+    
+    Accessible from other machines on your network. Use with caution.
+  </Tab>
+</Tabs>
+
+**Default:** `127.0.0.1`
+
+### UI Language
+
+```bash
+LANGUAGE=en
+```
+
+<Tabs>
+  <Tab title="Supported Languages">
+    - `en`: English
+    - `zh`: Chinese (中文)
+    - `ja`: Japanese (日本語)
+    - `he`: Hebrew (עברית)
+  </Tab>
+  
+  <Tab title="Default">
+    `en`
+  </Tab>
+</Tabs>
+
+### Default Batch Size
+
+```bash
+ACESTEP_BATCH_SIZE=2
+```
+
+Default batch size for generation. Valid range: 1 to GPU-dependent max.
+
+<Note>
+When not specified, defaults to `min(2, GPU_max)` based on your GPU tier.
+</Note>
+
+## Startup Settings
+
+### Skip Model Loading
+
+```bash
+ACESTEP_NO_INIT=false
+```
+
+<Tabs>
+  <Tab title="false (default)">
+    Models are loaded at startup. Ready for immediate inference.
+  </Tab>
+  
+  <Tab title="true">
+    Skip model loading at startup. Models will be lazy-loaded on first request. Use this to start the server quickly without loading models.
+    
+    ```bash
+    ACESTEP_NO_INIT=true
+    ```
+  </Tab>
+</Tabs>
+
+## Advanced Environment Variables
+
+These variables are documented in [GPU Compatibility](/configuration/gpu-compatibility) and [Troubleshooting](/configuration/troubleshooting).
+
+### GPU Debugging
+
+```bash
+# Override detected VRAM for tier simulation
+MAX_CUDA_VRAM=8
+MAX_MPS_VRAM=16
+MAX_XPU_VRAM=12
+```
+
+### ROCm (AMD GPUs)
+
+```bash
+# Override GPU architecture for RDNA3 GPUs
+HSA_OVERRIDE_GFX_VERSION=11.0.0
+
+# MIOpen kernel selection mode
+MIOPEN_FIND_MODE=FAST
+
+# PyTorch compilation backend
+TORCH_COMPILE_BACKEND=eager
+
+# Force pt backend for LM
+ACESTEP_LM_BACKEND=pt
+```
+
+### CUDA (NVIDIA GPUs)
+
+```bash
+# Select which GPU to use (multi-GPU systems)
+CUDA_VISIBLE_DEVICES=0
+```
+
+### VRAM Optimization
+
+```bash
+# Force VAE decode on CPU to save VRAM
+ACESTEP_VAE_ON_CPU=1
+```
+
+## Complete .env.example Reference
+
+```bash
+# ACE-Step Environment Configuration
+# Copy this file to .env and modify as needed
+
+# ==================== Model Settings ====================
+# DiT model path
+ACESTEP_CONFIG_PATH=acestep-v15-turbo
+
+# LM model path (used when LLM is enabled)
+ACESTEP_LM_MODEL_PATH=acestep-5Hz-lm-1.7B
+
+# Device selection: auto, cuda, cpu, xpu
+ACESTEP_DEVICE=auto
+
+# LM backend: vllm (faster) or pt (PyTorch native)
+ACESTEP_LM_BACKEND=vllm
+
+# ==================== LLM Initialization ====================
+# Controls whether to initialize the Language Model
+# Values: auto, true/1/yes, false/0/no
+# Default: auto (based on GPU VRAM detection)
+ACESTEP_INIT_LLM=auto
+
+# ==================== Download Settings ====================
+# Preferred download source: auto, huggingface, modelscope
+# ACESTEP_DOWNLOAD_SOURCE=auto
+
+# ==================== API Server Settings ====================
+# API key for authentication (optional)
+# ACESTEP_API_KEY=sk-your-secret-key
+
+# ==================== Gradio UI Settings ====================
+# Server port (default: 7860)
+# PORT=7860
+
+# Server name/host (default: 127.0.0.1 for local only, 0.0.0.0 for network access)
+# SERVER_NAME=127.0.0.1
+
+# UI language: en, zh, he, ja (default: en)
+# LANGUAGE=en
+
+# Default batch size for generation (1 to GPU-dependent max)
+# ACESTEP_BATCH_SIZE=2
+
+# ==================== Startup Settings ====================
+# Skip model loading at startup (models will be lazy-loaded on first request)
+# ACESTEP_NO_INIT=false
+```
+
+## See Also
+
+- [GPU Compatibility](/configuration/gpu-compatibility) - GPU tier configuration and VRAM requirements
+- [Troubleshooting](/configuration/troubleshooting) - Resolve GPU detection and configuration issues
