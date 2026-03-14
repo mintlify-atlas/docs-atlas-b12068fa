@@ -1,0 +1,108 @@
+{
+  "projectType": "ai-ml",
+  "projectName": "ACE-Step 1.5",
+  "projectDescription": "Open-source music generation model that delivers commercial-grade quality with ultra-fast generation and extensive customization capabilities.",
+  "theme": "aspen",
+  "primaryColor": "#7c7c7c",
+  "lightColor": "#b6b6b6",
+  "darkColor": "#111111",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Usage",
+            "pages": [
+              "usage/gradio-ui",
+              "usage/cli",
+              "usage/python-api",
+              "usage/rest-api",
+              "usage/studio-ui"
+            ]
+          },
+          {
+            "group": "Model",
+            "pages": [
+              "model/architecture",
+              "model/model-zoo",
+              "model/performance",
+              "model/tutorial"
+            ]
+          },
+          {
+            "group": "Training",
+            "pages": [
+              "training/lora-training",
+              "training/advanced-training"
+            ]
+          },
+          {
+            "group": "Configuration",
+            "pages": [
+              "configuration/gpu-compatibility",
+              "configuration/environment-setup",
+              "configuration/troubleshooting"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Python API",
+            "pages": [
+              "api-reference/inference/overview",
+              "api-reference/inference/generation-params",
+              "api-reference/inference/generation-config",
+              "api-reference/inference/task-types"
+            ]
+          },
+          {
+            "group": "REST API",
+            "pages": [
+              "api-reference/rest/overview",
+              "api-reference/rest/authentication",
+              "api-reference/rest/endpoints",
+              "api-reference/rest/task-management"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Ultra-fast music generation (under 2s on A100)",
+    "Commercial-grade quality output",
+    "50+ language support with lyrics",
+    "LoRA training for style personalization",
+    "Multi-platform support (CUDA, ROCm, MPS, XPU)",
+    "Advanced editing (cover generation, repainting, vocal2BGM)",
+    "Flexible duration (10s to 10 minutes)",
+    "REST API and Python SDK"
+  ],
+  "publicApiSurface": [
+    "generate_music()",
+    "understand_music()",
+    "create_sample()",
+    "format_sample()",
+    "AceStepHandler",
+    "LLMHandler",
+    "GenerationParams",
+    "GenerationConfig",
+    "POST /release_task",
+    "POST /query_result",
+    "GET /v1/audio",
+    "acestep (CLI)",
+    "acestep-api (API server)"
+  ]
+}
